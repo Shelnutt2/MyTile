@@ -44,20 +44,32 @@ tiledb::Attribute tile::create_field_attribute(Field *field, tiledb::Context ctx
       return tiledb::Attribute::create<float>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
     case MYSQL_TYPE_TINY:
-      return tiledb::Attribute::create<int8_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      if (((Field_num *) field)->unsigned_flag)
+        return tiledb::Attribute::create<uint8_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      else
+        return tiledb::Attribute::create<int8_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
     case MYSQL_TYPE_SHORT:
-      return tiledb::Attribute::create<int16_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
-
+      if (((Field_num *) field)->unsigned_flag) {
+        return tiledb::Attribute::create<uint16_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      } else {
+        return tiledb::Attribute::create<int16_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      }
     case MYSQL_TYPE_YEAR:
       return tiledb::Attribute::create<uint16_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
     case MYSQL_TYPE_INT24:
-      return tiledb::Attribute::create<int32_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      if (((Field_num *) field)->unsigned_flag)
+        return tiledb::Attribute::create<uint32_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      else
+        return tiledb::Attribute::create<int32_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_LONGLONG:
-      return tiledb::Attribute::create<int64_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      if (((Field_num *) field)->unsigned_flag)
+        return tiledb::Attribute::create<uint64_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      else
+        return tiledb::Attribute::create<int64_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
     case MYSQL_TYPE_NULL:
       return tiledb::Attribute::create<int64_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
