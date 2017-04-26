@@ -571,7 +571,7 @@ ha_rows tile::mytile::records_in_range(uint inx, key_range *min_key, key_range *
 
 ulonglong tile::mytile::table_flags(void) const {
   DBUG_ENTER("tile::mytile::table_flags");
-  DBUG_RETURN(HA_REC_NOT_IN_SEQ | HA_CAN_SQL_HANDLER | HA_NULL_IN_KEY | HA_REQUIRE_PRIMARY_KEY | HA_NO_BLOBS
+  DBUG_RETURN(HA_REC_NOT_IN_SEQ | HA_CAN_SQL_HANDLER | HA_NULL_IN_KEY | HA_REQUIRE_PRIMARY_KEY
               | HA_CAN_BIT_FIELD | HA_FILE_BASED | HA_BINLOG_ROW_CAPABLE | HA_BINLOG_STMT_CAPABLE);
 };
 

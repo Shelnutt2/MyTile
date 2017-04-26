@@ -29,5 +29,6 @@ make -j4
 
 ## Known Issues
 
-- Blob columns return only null data
+- Nulls are not supported yet
+- Geometry is not supported
 
