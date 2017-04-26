@@ -203,13 +203,14 @@ int tile::mytile::rnd_next(uchar *buf) {
 }
 
 int tile::mytile::tileToFields(tiledb::MapItem item) {
-  DBUG_ENTER("tile::mytile::tleToFields");
+  DBUG_ENTER("tile::mytile::tileToFields");
   int rc = 0;
   // We must set the bitmap for debug purpose, it is "write_set" because we use Field->store
   my_bitmap_map *orig = dbug_tmp_use_all_columns(table, table->write_set);
   try {
     auto attributesMap = this->mapSchema->attributes();
     for (Field **field = table->field; *field; field++) {
+      (*field)->set_notnull();
       auto attributePair = attributesMap.find((*field)->field_name);
       if (attributePair == attributesMap.end()) {
         sql_print_error("Field %s is not present in the schema map but is in field list. Table %s is broken.",
