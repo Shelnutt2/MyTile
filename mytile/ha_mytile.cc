@@ -194,7 +194,7 @@ int tile::mytile::rnd_next(uchar *buf) {
         if (attributePair == attributesMap.end()) {
           sql_print_error("Field %s is not present in the schema map but is in field list. Table %s is broken.",
                           (*field)->field_name, name);
-          rc = -100;
+          rc = -200;
           break;
         }
         switch (attributePair->second.type()) {
@@ -217,7 +217,7 @@ int tile::mytile::rnd_next(uchar *buf) {
             /** Character */
           case TILEDB_CHAR: {
             std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
-            switch((*field)->type()) {
+            switch ((*field)->type()) {
               case MYSQL_TYPE_GEOMETRY:
               case MYSQL_TYPE_BLOB:
               case MYSQL_TYPE_LONG_BLOB:
@@ -355,73 +355,35 @@ int tile::mytile::write_row(uchar *buf) {
     std::vector<uchar> keyVec(to_key, to_key + table->key_info[this->primaryIndexID].key_length);
     try {
       auto item = tiledb::Map::create_item(ctx, keyVec);
+      auto attributesMap = this->mapSchema->attributes();
       for (Field **field = table->field; *field; field++) {
         if (!(*field)->is_null()) {
-          switch ((*field)->type()) {
-
-            case MYSQL_TYPE_DOUBLE: {
-              item[(*field)->field_name] = (*field)->val_real();
+          auto attributePair = attributesMap.find((*field)->field_name);
+          if (attributePair == attributesMap.end()) {
+            sql_print_error("Field %s is not present in the schema map but is in field list. Table %s is broken.",
+                            (*field)->field_name, name);
+            error = -100;
+            break;
+          }
+          switch (attributePair->second.type()) {
+            /** 32-bit signed integer */
+            case TILEDB_INT32:
+              item[(*field)->field_name] = static_cast<int32_t>((*field)->val_int());
               break;
-            }
-            case MYSQL_TYPE_DECIMAL:
-            case MYSQL_TYPE_NEWDECIMAL: {
-              item[(*field)->field_name] = (*field)->val_real();
+              /** 64-bit signed integer */
+            case TILEDB_INT64:
+              item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
               break;
-            }
-
-            case MYSQL_TYPE_FLOAT: {
+              /** 32-bit floating point value */
+            case TILEDB_FLOAT32:
               item[(*field)->field_name] = static_cast<float>((*field)->val_real());
               break;
-            }
-
-            case MYSQL_TYPE_TINY: {
-              if (((Field_num *) field)->unsigned_flag) {
-                item[(*field)->field_name] = static_cast<uint8_t>((*field)->val_int());
-              } else {
-                item[(*field)->field_name] = static_cast<int8_t>((*field)->val_int());
-              }
+              /** 64-bit floating point value */
+            case TILEDB_FLOAT64:
+              item[(*field)->field_name] = (*field)->val_real();
               break;
-            }
-            case MYSQL_TYPE_SHORT: {
-              if (((Field_num *) field)->unsigned_flag)
-                item[(*field)->field_name] = static_cast<uint16_t>((*field)->val_int());
-              else
-                item[(*field)->field_name] = static_cast<int16_t>((*field)->val_int());
-              break;
-            }
-            case MYSQL_TYPE_YEAR: {
-              item[(*field)->field_name] = static_cast<uint16_t>((*field)->val_int());
-              break;
-            }
-            case MYSQL_TYPE_INT24: {
-              if (((Field_num *) field)->unsigned_flag)
-                item[(*field)->field_name] = static_cast<uint32_t>((*field)->val_int());
-              else
-                item[(*field)->field_name] = static_cast<int32_t>((*field)->val_int());
-              break;
-            }
-            case MYSQL_TYPE_LONG:
-            case MYSQL_TYPE_LONGLONG: {
-              if (((Field_num *) field)->unsigned_flag)
-                item[(*field)->field_name] = static_cast<uint64_t>((*field)->val_int());
-              else
-                item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
-              break;
-            }
-
-            case MYSQL_TYPE_NULL: {
-              break;
-            }
-
-            case MYSQL_TYPE_BIT: {
-              item[(*field)->field_name] = static_cast<uint8_t>((*field)->val_int());
-              break;
-            }
-
-            case MYSQL_TYPE_VARCHAR:
-            case MYSQL_TYPE_STRING:
-            case MYSQL_TYPE_VAR_STRING:
-            case MYSQL_TYPE_SET: {
+              /** Character */
+            case TILEDB_CHAR: {
               char attribute_buffer[1024 * 8];
               String attribute(attribute_buffer, sizeof(attribute_buffer),
                                &my_charset_utf8_general_ci);
@@ -429,30 +391,92 @@ int tile::mytile::write_row(uchar *buf) {
               item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
               break;
             }
+              /** 8-bit signed integer */
+            case TILEDB_INT8:
+              item[(*field)->field_name] = static_cast<int8_t>((*field)->val_int());
+              break;
+              /** 8-bit unsigned integer */
+            case TILEDB_UINT8:
+              item[(*field)->field_name] = static_cast<uint8_t>((*field)->val_int());
+              break;
 
-            case MYSQL_TYPE_GEOMETRY:
-            case MYSQL_TYPE_BLOB:
-            case MYSQL_TYPE_LONG_BLOB:
-            case MYSQL_TYPE_MEDIUM_BLOB:
-            case MYSQL_TYPE_TINY_BLOB:
-            case MYSQL_TYPE_ENUM: {
+              /** 16-bit signed integer */
+            case TILEDB_INT16:
+              item[(*field)->field_name] = static_cast<int16_t>((*field)->val_int());
+              break;
+              /** 16-bit unsigned integer */
+            case TILEDB_UINT16:
+              item[(*field)->field_name] = static_cast<uint16_t>((*field)->val_int());
+              break;
+              /** 32-bit unsigned integer */
+            case TILEDB_UINT32:
+              item[(*field)->field_name] = static_cast<uint32_t>((*field)->val_int());
+              break;
+              /** 64-bit unsigned integer */
+            case TILEDB_UINT64:
+              item[(*field)->field_name] = static_cast<uint64_t>((*field)->val_int());
+              break;
+              /** ASCII string */
+            case TILEDB_STRING_ASCII: {
               char attribute_buffer[1024 * 8];
               String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_bin);
+                               &my_charset_utf8_general_ci);
               (*field)->val_str(&attribute, &attribute);
-
               item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
               break;
             }
-            case MYSQL_TYPE_DATE:
-            case MYSQL_TYPE_DATETIME:
-            case MYSQL_TYPE_DATETIME2:
-            case MYSQL_TYPE_TIME:
-            case MYSQL_TYPE_TIME2:
-            case MYSQL_TYPE_TIMESTAMP:
-            case MYSQL_TYPE_TIMESTAMP2:
-            case MYSQL_TYPE_NEWDATE: {
-              item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
+              /** UTF-8 string */
+            case TILEDB_STRING_UTF8: {
+              char attribute_buffer[1024 * 8];
+              String attribute(attribute_buffer, sizeof(attribute_buffer),
+                               &my_charset_utf8_general_ci);
+              (*field)->val_str(&attribute, &attribute);
+              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+              break;
+            }
+              /** UTF-16 string */
+            case TILEDB_STRING_UTF16: {
+              char attribute_buffer[1024 * 8];
+              String attribute(attribute_buffer, sizeof(attribute_buffer),
+                               &my_charset_utf16_general_ci);
+              (*field)->val_str(&attribute, &attribute);
+              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+              break;
+            }
+              /** UTF-32 string */
+            case TILEDB_STRING_UTF32: {
+              char attribute_buffer[1024 * 8];
+              String attribute(attribute_buffer, sizeof(attribute_buffer),
+                               &my_charset_utf32_general_ci);
+              (*field)->val_str(&attribute, &attribute);
+              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+              break;
+            }
+              /** UCS2 string */
+            case TILEDB_STRING_UCS2: {
+              char attribute_buffer[1024 * 8];
+              String attribute(attribute_buffer, sizeof(attribute_buffer),
+                               &my_charset_ucs2_general_ci);
+              (*field)->val_str(&attribute, &attribute);
+              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+              break;
+            }
+              /** UCS4 string */
+            case TILEDB_STRING_UCS4: {
+              char attribute_buffer[1024 * 8];
+              String attribute(attribute_buffer, sizeof(attribute_buffer),
+                               &my_charset_utf8_general_ci);
+              (*field)->val_str(&attribute, &attribute);
+              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+              break;
+            }
+              /** This can be any datatype. Must store (type tag, value) pairs. */
+            case TILEDB_ANY: {
+              char attribute_buffer[1024 * 8];
+              String attribute(attribute_buffer, sizeof(attribute_buffer),
+                               &my_charset_utf8_general_ci);
+              (*field)->val_str(&attribute, &attribute);
+              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
               break;
             }
           }
@@ -460,16 +484,18 @@ int tile::mytile::write_row(uchar *buf) {
           //sql_print_error("Field %s is null!!", (*field)->field_name);
         }
       }
-      map->add_item(item);
-      map->flush();
+      if(!error) {
+        map->add_item(item);
+        map->flush();
+      }
     } catch (const tiledb::TileDBError &e) {
       // Log errors
       sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
-      error = -100;
+      error = -101;
     } catch (const std::exception &e) {
       // Log errors
       sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
-      error = -101;
+      error = -102;
     }
   } else {
     sql_print_error("update auto increment failed (error code %d) for write_row on table %s", error,
