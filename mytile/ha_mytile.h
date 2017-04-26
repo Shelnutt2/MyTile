@@ -63,6 +63,8 @@ namespace tile {
 
         void position(const uchar *record) override;
 
+        int tileToFields(tiledb::MapItem item);
+
         int write_row(uchar *buf) override;
 
         THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) override;
