@@ -1,0 +1,14 @@
+# Use new trusty images, should yield newer compilers and packages
+dist: trusty
+sudo: true
+language: cpp
+
+git:
+  depth: 10
+
+services:
+  - docker
+
+# Build steps
+script:
+  - docker run --rm -t -v $PWD:/opt/server registry.gitlab.com/shelnutt2/mariadb-build-deps/crunch /opt/server/ci/ci_tests.sh
