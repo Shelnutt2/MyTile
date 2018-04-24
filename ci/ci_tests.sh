@@ -6,7 +6,7 @@ shopt -s extglob
 mv !(tmp) tmp # Move everything but tmp
 wget https://downloads.mariadb.org/interstitial/mariadb-10.2.10/source/mariadb-10.2.10.tar.gz \
 && tar xf mariadb-10.2.10.tar.gz \
-&& mv tmp mariadb-10.2.10/storage/crunch \
+&& mv tmp mariadb-10.2.10/storage/mytile \
 && cd mariadb-10.2.10 \
 && mkdir build \
 && cd build \
