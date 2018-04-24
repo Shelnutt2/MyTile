@@ -31,10 +31,10 @@ int tile::create_map(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_
 
 // Create the map on storage
   tiledb::Map::create(name, schema);
-  DBUG_RETURN(0);
+  DBUG_RETURN(rc);
 }
 
-tiledb::Attribute create_field_attribute(Field *field, tiledb::Context ctx) {
+tiledb::Attribute tile::create_field_attribute(Field *field, tiledb::Context ctx) {
   switch (field->type()) {
 
     case MYSQL_TYPE_DOUBLE:
