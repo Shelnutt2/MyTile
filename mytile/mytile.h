@@ -10,5 +10,5 @@
 
 namespace tile {
   int create_map(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_info);
-  tiledb::Attribute create_field_attribute(Field *field);
+  tiledb::Attribute create_field_attribute(Field *field, tiledb::Context ctx);
 }
