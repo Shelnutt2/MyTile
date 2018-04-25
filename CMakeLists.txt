@@ -23,6 +23,8 @@ MYSQL_ADD_PLUGIN(mytile ${SOURCE_FILES} STORAGE_ENGINE MODULE_ONLY RECOMPILE_FOR
 # Set dependencies on superbuild
 add_dependencies(mytile tiledb)
 
-# Manually link static library
-target_link_libraries(mytile "libtiledb.a")
+# Manually link shared library
+# Static tiledb is throwing ha_mytile.so (errno: 2, undefined symbol: blosc_compress_ctx)
+# Must use full library name else cmake things its the external target of `tiledb`
+target_link_libraries(mytile "libtiledb.so")
 target_include_directories(mytile PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/external/TileDB/tiledb/examples" "mytile")
