@@ -1,0 +1,317 @@
+--echo #
+--echo # The purpose of this test is to build a table of each supported data type
+--echo #
+
+--echo # INTEGER
+CREATE TABLE t1 (
+  column1 integer
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # DOUBLE
+CREATE TABLE t1 (
+  column1 double
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1.1);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # DECIMAL
+CREATE TABLE t1 (
+  column1 decimal(10,3)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1.1);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # FLOAT
+CREATE TABLE t1 (
+  column1 float
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1.1);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # TINYINT
+CREATE TABLE t1 (
+  column1 tinyint
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # BOOL
+CREATE TABLE t1 (
+  column1 bool
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # SMALLINT
+CREATE TABLE t1 (
+  column1 smallint
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1);
+select * FROM t1;
+DROP TABLE t1;
+
+#--echo # YEAR
+#CREATE TABLE t1 (
+#  column1 year
+#) ENGINE=mytile;
+#INSERT INTO t1 VALUES (1);
+#select * FROM t1;
+#DROP TABLE t1;
+
+--echo # MEDIUMINT
+CREATE TABLE t1 (
+  column1 mediumint
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # BIGINT
+CREATE TABLE t1 (
+  column1 bigint
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # YEAR
+CREATE TABLE t1 (
+  column1 year
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (2017);
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # BIT
+CREATE TABLE t1 (
+  column1 bit
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1);
+select column1+0 FROM t1;
+DROP TABLE t1;
+
+--echo # CHAR
+CREATE TABLE t1 (
+  column1 char
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("t");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # VARCHAR
+CREATE TABLE t1 (
+  column1 varchar(255)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("test");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # BINARY
+CREATE TABLE t1 (
+  column1 binary
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("t");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # ENUM
+CREATE TABLE t1 (
+  column1 enum('test')
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("test");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # DATETIME
+CREATE TABLE t1 (
+  column1 DATETIME
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("2017-08-13 00:00:00");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # DATETIME(6)
+CREATE TABLE t1 (
+  column1 DATETIME(6)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("2017-08-13 00:00:00.000000");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # TIME
+CREATE TABLE t1 (
+  column1 TIME
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("00:00:00");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # TIME(6)
+CREATE TABLE t1 (
+  column1 TIME(6)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("00:00:00.000000");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # TIMESTAMP
+CREATE TABLE t1 (
+  column1 TIMESTAMP
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("2017-08-13 00:00:00");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # TIMESTAMP(6)
+CREATE TABLE t1 (
+  column1 TIMESTAMP(6)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("2017-08-13 00:00:00.000000");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # TINYTEXT
+CREATE TABLE t1 (
+  column1 TINYTEXT
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("test");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # TEXT
+CREATE TABLE t1 (
+  column1 TEXT
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("test");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # MEDIUMTEXT
+CREATE TABLE t1 (
+  column1 MEDIUMTEXT
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("test");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # LONGTEXT
+CREATE TABLE t1 (
+  column1 LONGTEXT
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ("test");
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # TINYBLOB
+CREATE TABLE t1 (
+  column1 TINYBLOB
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # BLOB
+CREATE TABLE t1 (
+  column1 BLOB
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # MEDIUMBLOB
+CREATE TABLE t1 (
+  column1 MEDIUMBLOB
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # LONGBLOB
+CREATE TABLE t1 (
+  column1 LONGBLOB
+) ENGINE=mytile;
+INSERT INTO t1 VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
+select * FROM t1;
+DROP TABLE t1;
+
+--echo # POINT
+CREATE TABLE t1 (
+  column1 POINT
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (PointFromText('POINT(10 10)'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # LINESTRING
+CREATE TABLE t1 (
+  column1 LINESTRING
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (LineFromText('LINESTRING(0 0,0 10,10 0)'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # POLYGON
+CREATE TABLE t1 (
+  column1 POLYGON
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (PolygonFromText('POLYGON((10 10,20 10,20 20,10 20,10 10))'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # MULTIPOINT
+CREATE TABLE t1 (
+  column1 MULTIPOINT
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (MultiPointFromText('MULTIPOINT(0 0,10 10,10 20,20 20)'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # MULTILINESTRING
+CREATE TABLE t1 (
+  column1 MULTILINESTRING
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (MultiLineStringFromText('MULTILINESTRING((10 48,10 21,10 0),(16 0,16 23,16 48))'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # MULTIPOLYGON
+CREATE TABLE t1 (
+  column1 MULTIPOLYGON
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (MultiPolygonFromText('MULTIPOLYGON(((28 26,28 0,84 0,84 42,28 26),(52 18,66 23,73 9,48 6,52 18)),((59 18,67 18,67 13,59 13,59 18)))'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # GEOMETRYCOLLECTION
+CREATE TABLE t1 (
+  column1 GEOMETRYCOLLECTION
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (GeomCollFromText('GEOMETRYCOLLECTION(POINT(0 0), LINESTRING(0 0,10 10))'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # GEOMETRY
+CREATE TABLE t1 (
+  column1 GEOMETRY
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (PointFromText('POINT(10 10)'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # UNSIGNED INTEGER
+CREATE TABLE t1 (
+  column1 smallint unsigned
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1);
+INSERT INTO t1 VALUES (-1);
+INSERT INTO t1 VALUES (65535);
+select * FROM t1 ORDER BY column1 ASC;
+DROP TABLE t1;

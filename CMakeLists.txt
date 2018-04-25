@@ -12,12 +12,19 @@ endif ()
 
 add_subdirectory(external/TileDB)
 
-SET(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-fno-rtti")
-SET(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS} "-g")
-
+# TileDB does not current support linking via cmake projects with their super build.
+# We should not use link_directories but are forced to
+link_directories("${CMAKE_CURRENT_BINARY_DIR}/external/TileDB/tiledb/tiledb/")
 
 file(GLOB SOURCE_FILES mytile/*.cc)
 
+# A the storage engine plugin
 MYSQL_ADD_PLUGIN(mytile ${SOURCE_FILES} STORAGE_ENGINE MODULE_ONLY RECOMPILE_FOR_EMBEDDED)
-include_directories("external/TileDB mytile")
-target_link_libraries(mytile ${tiledb_static})
+# Set dependencies on superbuild
+add_dependencies(mytile tiledb)
+
+# Manually link shared library
+# Static tiledb is throwing ha_mytile.so (errno: 2, undefined symbol: blosc_compress_ctx)
+# Must use full library name else cmake things its the external target of `tiledb`
+target_link_libraries(mytile "libtiledb.so")
+target_include_directories(mytile PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/external/TileDB/tiledb/examples" "mytile")
