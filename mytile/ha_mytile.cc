@@ -233,18 +233,11 @@ int tile::mytile::write_row(uchar *buf) {
             }
 
             case MYSQL_TYPE_TINY: {
-              if (((Field_num *) field)->unsigned_flag) {
-                item[(*field)->field_name] = static_cast<uint8_t>((*field)->val_int());
-              } else {
-                item[(*field)->field_name] = static_cast<int8_t>((*field)->val_int());
-              }
+              item[(*field)->field_name] = static_cast<int8_t>((*field)->val_int());
               break;
             }
             case MYSQL_TYPE_SHORT: {
-              if (((Field_num *) field)->unsigned_flag)
-                item[(*field)->field_name] = static_cast<uint16_t>((*field)->val_int());
-              else
-                item[(*field)->field_name] = static_cast<int16_t>((*field)->val_int());
+              item[(*field)->field_name] = static_cast<int16_t>((*field)->val_int());
               break;
             }
             case MYSQL_TYPE_YEAR: {
@@ -252,18 +245,12 @@ int tile::mytile::write_row(uchar *buf) {
               break;
             }
             case MYSQL_TYPE_INT24: {
-              if (((Field_num *) field)->unsigned_flag)
-                item[(*field)->field_name] = static_cast<uint32_t>((*field)->val_int());
-              else
-                item[(*field)->field_name] = static_cast<int32_t>((*field)->val_int());
+              item[(*field)->field_name] = static_cast<int32_t>((*field)->val_int());
               break;
             }
             case MYSQL_TYPE_LONG:
             case MYSQL_TYPE_LONGLONG: {
-              if (((Field_num *) field)->unsigned_flag)
-                item[(*field)->field_name] = static_cast<uint64_t>((*field)->val_int());
-              else
-                item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
+              item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
               break;
             }
 
