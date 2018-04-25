@@ -1,35 +1,33 @@
 /*
 ** Licensed under the GNU Lesser General Public License v3 or later
 */
+#include <log.h>
 #include "mytile.h"
 
 int tile::create_map(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_info) {
   DBUG_ENTER("tile::create_map");
-  int rc = 0 ;
-// Create TileDB context
+  int rc = 0;
+  // Create TileDB context
   tiledb::Context ctx;
 
 
-// Create map schema
+  // Create map schema
   tiledb::MapSchema schema(ctx);
 
-// Create attributes
-  for(Field **field = table_arg->field; *field; field++) {
-    schema.add_attributes(create_field_attribute(*field, ctx));
+  // Create attributes
+  for (Field **field = table_arg->field; *field; field++) {
+    schema.add_attribute(create_field_attribute(*field, ctx));
   }
 
-// Check array schema
+  // Check array schema
   try {
     schema.check();
   } catch (tiledb::TileDBError &e) {
-    std::cout << e.what() << "\n";
-    DBUG_RETURN(-1);
+    sql_print_error("Error in building schema %s", e.what());
+    DBUG_RETURN(-10);
   }
 
-// Print the map schema
-  schema.dump(stdout);
-
-// Create the map on storage
+  // Create the map on storage
   tiledb::Map::create(name, schema);
   DBUG_RETURN(rc);
 }
@@ -52,11 +50,13 @@ tiledb::Attribute tile::create_field_attribute(Field *field, tiledb::Context ctx
         return tiledb::Attribute::create<int8_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
     case MYSQL_TYPE_SHORT:
-    case MYSQL_TYPE_YEAR:
-      if (((Field_num *) field)->unsigned_flag)
+      if (((Field_num *) field)->unsigned_flag) {
         return tiledb::Attribute::create<uint16_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
-      else
+      } else {
         return tiledb::Attribute::create<int16_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      }
+    case MYSQL_TYPE_YEAR:
+      return tiledb::Attribute::create<uint16_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
     case MYSQL_TYPE_INT24:
       if (((Field_num *) field)->unsigned_flag)
@@ -75,7 +75,7 @@ tiledb::Attribute tile::create_field_attribute(Field *field, tiledb::Context ctx
       return tiledb::Attribute::create<int64_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
     case MYSQL_TYPE_BIT:
-      return tiledb::Attribute::create<uint16_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
+      return tiledb::Attribute::create<uint8_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 
 
     case MYSQL_TYPE_VARCHAR :
@@ -102,6 +102,6 @@ tiledb::Attribute tile::create_field_attribute(Field *field, tiledb::Context ctx
     case MYSQL_TYPE_NEWDATE:
       return tiledb::Attribute::create<int64_t>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
   }
-
+  sql_print_error("Unknown mysql data type in creating tiledb field attribute");
   return tiledb::Attribute::create<std::string>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 }

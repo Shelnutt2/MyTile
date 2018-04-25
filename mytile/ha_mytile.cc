@@ -2,8 +2,12 @@
 ** Licensed under the GNU Lesser General Public License v3 or later
 */
 #include <sql_plugin.h>
+#include <log.h>
+#include <key.h>
+#include <vector>
 #include "ha_mytile.h"
 #include "mytile.h"
+#include "utils.h"
 
 // Handler for mytile engine
 handlerton *mytile_hton;
@@ -16,23 +20,22 @@ handlerton *mytile_hton;
 #ifdef HAVE_PSI_INTERFACE
 static PSI_mutex_key ex_key_mutex_mytile_share_mutex;
 
-static PSI_mutex_info all_mytile_mutexes[]=
+static PSI_mutex_info all_mytile_mutexes[] =
     {
-        { &ex_key_mutex_mytile_share_mutex, "mytile_share::mutex", 0}
+        {&ex_key_mutex_mytile_share_mutex, "mytile_share::mutex", 0}
     };
 
-static void init_mytile_psi_keys()
-{
-  const char* category= "mytile";
+static void init_mytile_psi_keys() {
+  const char *category = "mytile";
   int count;
 
-  count= array_elements(all_mytile_mutexes);
+  count = array_elements(all_mytile_mutexes);
   mysql_mutex_register(category, all_mytile_mutexes, count);
 }
+
 #endif
 
-tile::mytile_share::mytile_share()
-{
+tile::mytile_share::mytile_share() {
   thr_lock_init(&lock);
   mysql_mutex_init(ex_key_mutex_mytile_share_mutex,
                    &mutex, MY_MUTEX_INIT_FAST);
@@ -47,20 +50,18 @@ tile::mytile_share::mytile_share()
   they are needed to function.
 */
 
-tile::mytile_share *tile::mytile::get_share()
-{
+tile::mytile_share *tile::mytile::get_share() {
   tile::mytile_share *tmp_share;
 
   DBUG_ENTER("tile::mytile::get_share()");
 
   lock_shared_ha_data();
-  if (!(tmp_share= static_cast<tile::mytile_share*>(get_ha_share_ptr())))
-  {
-    tmp_share= new mytile_share;
+  if (!(tmp_share = static_cast<tile::mytile_share *>(get_ha_share_ptr()))) {
+    tmp_share = new mytile_share;
     if (!tmp_share)
       goto err;
 
-    set_ha_share_ptr(static_cast<Handler_share*>(tmp_share));
+    set_ha_share_ptr(static_cast<Handler_share *>(tmp_share));
   }
   err:
   unlock_shared_ha_data();
@@ -111,18 +112,19 @@ int tile::mytile::create(const char *name, TABLE *table_arg, HA_CREATE_INFO *cre
   DBUG_ENTER("tile::mytile::create");
   DBUG_RETURN(create_map(name, table_arg, create_info));
 }
+
 /**
  * Delete a table by rm'ing the tiledb directory
  * @param name
  * @return
  */
-int tile::mytile::delete_table(const char *name){
+int tile::mytile::delete_table(const char *name) {
   DBUG_ENTER("tile::mytile::delete_table");
   //Delete dir
-  DBUG_RETURN(my_delete(name, MYF(0)));
+  DBUG_RETURN(tile::removeDirectory(name));
 }
 
-int tile::mytile::rename_table(const char *from, const char *to){
+int tile::mytile::rename_table(const char *from, const char *to) {
   DBUG_ENTER("tile::mytile::rename_table");
   DBUG_RETURN(0);
 }
@@ -131,9 +133,27 @@ int tile::mytile::open(const char *name, int mode, uint test_if_locked) {
   DBUG_ENTER("tile::mytile::open");
   if (!(share = get_share()))
     DBUG_RETURN(1);
-  thr_lock_data_init(&share->lock,&lock,NULL);
+  thr_lock_data_init(&share->lock, &lock, NULL);
+
+  // Create TileDB map
+  map = std::make_unique<tiledb::Map>(this->ctx, name);
+  this->name = name;
+
+  this->primaryIndexID = 255;
+  for (uint i = 0; i < table->s->keys; i++) {
+    if (table->s->key_info[i].flags & HA_NOSAME) {
+      this->primaryIndexID = i;
+      break;
+    }
+  }
+  if (this->primaryIndexID == 255) {
+    sql_print_error("Could not find primary key for %s", name);
+    DBUG_RETURN(10);
+  }
+
   DBUG_RETURN(0);
 };
+
 int tile::mytile::close(void) {
   DBUG_ENTER("tile::mytile::close");
   DBUG_RETURN(0);
@@ -143,17 +163,24 @@ int tile::mytile::close(void) {
 int tile::mytile::rnd_init(bool scan) {
   DBUG_ENTER("tile::mytile::rnd_init");
   // lock basic mutex
-  mysql_mutex_lock(&share->mutex);
+  //mysql_mutex_lock(&share->mutex);
   DBUG_RETURN(0);
 };
+
 int tile::mytile::rnd_next(uchar *buf) {
   DBUG_ENTER("tile::mytile::rnd_next");
-  DBUG_RETURN(0);
+  // We must set the bitmap for debug purpose, it is "write_set" because we use Field->store
+  my_bitmap_map *orig = dbug_tmp_use_all_columns(table, table->write_set);
+  // Reset bitmap to original
+  dbug_tmp_restore_column_map(table->write_set, orig);
+  DBUG_RETURN(HA_ERR_END_OF_FILE);
 };
-int tile::mytile::rnd_pos(uchar * buf, uchar *pos) {
+
+int tile::mytile::rnd_pos(uchar *buf, uchar *pos) {
   DBUG_ENTER("tile::mytile::rnd_pos");
   DBUG_RETURN(0);
 };
+
 void tile::mytile::position(const uchar *record) {
   DBUG_ENTER("tile::mytile::position");
   DBUG_VOID_RETURN;
@@ -162,18 +189,167 @@ void tile::mytile::position(const uchar *record) {
 int tile::mytile::rnd_end() {
   DBUG_ENTER("tile::mytile::rnd_end");
   // Unlock basic mutex
-  mysql_mutex_unlock(&share->mutex);
+  //mysql_mutex_unlock(&share->mutex);
   DBUG_RETURN(0);
+}
+
+int tile::mytile::write_row(uchar *buf) {
+  DBUG_ENTER("tile::mytile::write_row");
+  int error = 0;
+  // We must set the bitmap for debug purpose, it is "write_set" because we use Field->store
+  my_bitmap_map *old_map = dbug_tmp_use_all_columns(table, table->read_set);
+
+  /*
+   If we have an auto_increment column and we are writing a changed row
+   or a new row, then update the auto_increment value in the record.
+*/
+  if (table->next_number_field && buf == table->record[0])
+    error = update_auto_increment();
+
+  if (!error) {
+
+    uchar *to_key = new uchar[table->key_info[this->primaryIndexID].key_length];
+    key_copy(to_key, buf, &table->key_info[this->primaryIndexID], table->key_info[this->primaryIndexID].key_length);
+    std::vector<uchar> keyVec(to_key, to_key + table->key_info[this->primaryIndexID].key_length);
+    try {
+      auto item = tiledb::Map::create_item(ctx, keyVec);
+      for (Field **field = table->field; *field; field++) {
+        if (!(*field)->is_null()) {
+          switch ((*field)->type()) {
+
+            case MYSQL_TYPE_DOUBLE: {
+              item[(*field)->field_name] = (*field)->val_real();
+              break;
+            }
+            case MYSQL_TYPE_DECIMAL:
+            case MYSQL_TYPE_NEWDECIMAL: {
+              item[(*field)->field_name] = (*field)->val_real();
+              break;
+            }
+
+            case MYSQL_TYPE_FLOAT: {
+              item[(*field)->field_name] = static_cast<float>((*field)->val_real());
+              break;
+            }
+
+            case MYSQL_TYPE_TINY: {
+              if (((Field_num *) field)->unsigned_flag) {
+                item[(*field)->field_name] = static_cast<uint8_t>((*field)->val_int());
+              } else {
+                item[(*field)->field_name] = static_cast<int8_t>((*field)->val_int());
+              }
+              break;
+            }
+            case MYSQL_TYPE_SHORT: {
+              if (((Field_num *) field)->unsigned_flag)
+                item[(*field)->field_name] = static_cast<uint16_t>((*field)->val_int());
+              else
+                item[(*field)->field_name] = static_cast<int16_t>((*field)->val_int());
+              break;
+            }
+            case MYSQL_TYPE_YEAR: {
+              item[(*field)->field_name] = static_cast<uint16_t>((*field)->val_int());
+              break;
+            }
+            case MYSQL_TYPE_INT24: {
+              if (((Field_num *) field)->unsigned_flag)
+                item[(*field)->field_name] = static_cast<uint32_t>((*field)->val_int());
+              else
+                item[(*field)->field_name] = static_cast<int32_t>((*field)->val_int());
+              break;
+            }
+            case MYSQL_TYPE_LONG:
+            case MYSQL_TYPE_LONGLONG: {
+              if (((Field_num *) field)->unsigned_flag)
+                item[(*field)->field_name] = static_cast<uint64_t>((*field)->val_int());
+              else
+                item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
+              break;
+            }
+
+            case MYSQL_TYPE_NULL: {
+              break;
+            }
+
+            case MYSQL_TYPE_BIT: {
+              item[(*field)->field_name] = static_cast<uint8_t>((*field)->val_int());
+              break;
+            }
+
+            case MYSQL_TYPE_VARCHAR:
+            case MYSQL_TYPE_STRING:
+            case MYSQL_TYPE_VAR_STRING:
+            case MYSQL_TYPE_SET: {
+              char attribute_buffer[1024];
+              String attribute(attribute_buffer, sizeof(attribute_buffer),
+                               &my_charset_utf8_general_ci);
+              (*field)->val_str(&attribute, &attribute);
+              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+              break;
+            }
+
+            case MYSQL_TYPE_GEOMETRY:
+            case MYSQL_TYPE_BLOB:
+            case MYSQL_TYPE_LONG_BLOB:
+            case MYSQL_TYPE_MEDIUM_BLOB:
+            case MYSQL_TYPE_TINY_BLOB:
+            case MYSQL_TYPE_ENUM: {
+              char attribute_buffer[1024];
+              String attribute(attribute_buffer, sizeof(attribute_buffer),
+                               &my_charset_bin);
+              (*field)->val_str(&attribute, &attribute);
+
+              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+              break;
+            }
+            case MYSQL_TYPE_DATE:
+            case MYSQL_TYPE_DATETIME:
+            case MYSQL_TYPE_DATETIME2:
+            case MYSQL_TYPE_TIME:
+            case MYSQL_TYPE_TIME2:
+            case MYSQL_TYPE_TIMESTAMP:
+            case MYSQL_TYPE_TIMESTAMP2:
+            case MYSQL_TYPE_NEWDATE: {
+              item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
+              break;
+            }
+          }
+        } else {
+          //sql_print_error("Field %s is null!!", (*field)->field_name);
+        }
+      }
+      map->add_item(item);
+    } catch (const tiledb::TileDBError &e) {
+      // Log errors
+      sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
+      error = -100;
+    } catch (const std::exception &e) {
+      // Log errors
+      sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
+      error = -101;
+    }
+  } else {
+    sql_print_error("update auto increment failed (error code %d) for write_row on table %s", error,
+                    this->name.c_str());
+  }
+
+  // Reset bitmap to original
+  dbug_tmp_restore_column_map(table->read_set, old_map);
+  DBUG_RETURN(error);
 }
 
 THR_LOCK_DATA **tile::mytile::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) {
   DBUG_ENTER("tile::mytile::store_lock");
   if (lock_type != TL_IGNORE && lock.type == TL_UNLOCK)
-    lock.type=lock_type;
-  *to++= &lock;
+    lock.type = lock_type;
+  *to++ = &lock;
   DBUG_RETURN(to);
 };
 
+int tile::mytile::external_lock(THD *thd, int lock_type) {
+  DBUG_ENTER("tile::mytile::external_lock");
+  DBUG_RETURN(0);
+}
 
 int tile::mytile::info(uint) {
   DBUG_ENTER("tile::mytile::info");
@@ -181,46 +357,52 @@ int tile::mytile::info(uint) {
   stats.records = 2;
   DBUG_RETURN(0);
 };
+
 ulong tile::mytile::index_flags(uint inx, uint part, bool all_parts) const {
   DBUG_ENTER("tile::mytile::index_flags");
   DBUG_RETURN(0);
 }
 
+ha_rows tile::mytile::records_in_range(uint inx, key_range *min_key, key_range *max_key) {
+  DBUG_ENTER("tile::mytile::records_in_range");
+  DBUG_RETURN(HA_POS_ERROR);
+}
+
 ulonglong tile::mytile::table_flags(void) const {
   DBUG_ENTER("tile::mytile::table_flags");
-  DBUG_RETURN(HA_REC_NOT_IN_SEQ | HA_CAN_GEOMETRY | HA_CAN_SQL_HANDLER | HA_NULL_IN_KEY
+  DBUG_RETURN(HA_REC_NOT_IN_SEQ | HA_CAN_SQL_HANDLER | HA_NULL_IN_KEY | HA_REQUIRE_PRIMARY_KEY
               | HA_CAN_BIT_FIELD | HA_FILE_BASED | HA_BINLOG_ROW_CAPABLE | HA_BINLOG_STMT_CAPABLE);
 };
 
 mysql_declare_plugin(mytile)
-    {
-        MYSQL_STORAGE_ENGINE_PLUGIN,                  /* the plugin type (a MYSQL_XXX_PLUGIN value)   */
-        &mytile_storage_engine,                       /* pointer to type-specific plugin descriptor   */
-        "MyTile",                                     /* plugin name                                  */
-        "Seth Shelnutt",                              /* plugin author (for I_S.PLUGINS)              */
-        "MyTile storage engine",                      /* general descriptive text (for I_S.PLUGINS)   */
-        PLUGIN_LICENSE_GPL,                           /* the plugin license (PLUGIN_LICENSE_XXX)      */
-        mytile_init_func,                             /* Plugin Init */
-        NULL,                                         /* Plugin Deinit */
-        0x0001,                                       /* version number (0.1) */
-        NULL,                                         /* status variables */
-        NULL,                                         /* system variables */
-        NULL,                                         /* config options */
-        0,                                            /* flags */
-    }mysql_declare_plugin_end;
+        {
+            MYSQL_STORAGE_ENGINE_PLUGIN,                  /* the plugin type (a MYSQL_XXX_PLUGIN value)   */
+            &mytile_storage_engine,                       /* pointer to type-specific plugin descriptor   */
+            "MyTile",                                     /* plugin name                                  */
+            "Seth Shelnutt",                              /* plugin author (for I_S.PLUGINS)              */
+            "MyTile storage engine",                      /* general descriptive text (for I_S.PLUGINS)   */
+            PLUGIN_LICENSE_GPL,                           /* the plugin license (PLUGIN_LICENSE_XXX)      */
+            mytile_init_func,                             /* Plugin Init */
+            NULL,                                         /* Plugin Deinit */
+            0x0001,                                       /* version number (0.1) */
+            NULL,                                         /* status variables */
+            NULL,                                         /* system variables */
+            NULL,                                         /* config options */
+            0,                                            /* flags */
+        }mysql_declare_plugin_end;
 maria_declare_plugin(mytile)
-    {
-        MYSQL_STORAGE_ENGINE_PLUGIN,                  /* the plugin type (a MYSQL_XXX_PLUGIN value)   */
-        &mytile_storage_engine,                       /* pointer to type-specific plugin descriptor   */
-        "MyTile",                                     /* plugin name                                  */
-        "Seth Shelnutt",                              /* plugin author (for I_S.PLUGINS)              */
-        "MyTile storage engine",                      /* general descriptive text (for I_S.PLUGINS)   */
-        PLUGIN_LICENSE_GPL,                           /* the plugin license (PLUGIN_LICENSE_XXX)      */
-        mytile_init_func,                             /* Plugin Init */
-        NULL,                                         /* Plugin Deinit */
-        0x0001,                                       /* version number (0.1) */
-        NULL,                                         /* status variables */
-        NULL,                                         /* system variables */
-        "0.1",                                        /* string version */
-        MariaDB_PLUGIN_MATURITY_EXPERIMENTAL          /* maturity */
-    }maria_declare_plugin_end;
+        {
+            MYSQL_STORAGE_ENGINE_PLUGIN,                  /* the plugin type (a MYSQL_XXX_PLUGIN value)   */
+            &mytile_storage_engine,                       /* pointer to type-specific plugin descriptor   */
+            "MyTile",                                     /* plugin name                                  */
+            "Seth Shelnutt",                              /* plugin author (for I_S.PLUGINS)              */
+            "MyTile storage engine",                      /* general descriptive text (for I_S.PLUGINS)   */
+            PLUGIN_LICENSE_GPL,                           /* the plugin license (PLUGIN_LICENSE_XXX)      */
+            mytile_init_func,                             /* Plugin Init */
+            NULL,                                         /* Plugin Deinit */
+            0x0001,                                       /* version number (0.1) */
+            NULL,                                         /* status variables */
+            NULL,                                         /* system variables */
+            "0.1",                                        /* string version */
+            MariaDB_PLUGIN_MATURITY_EXPERIMENTAL          /* maturity */
+        }maria_declare_plugin_end;

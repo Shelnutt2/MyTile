@@ -3,7 +3,8 @@
 #
 # INTEGER
 CREATE TABLE t1 (
-column1 integer
+column1 integer,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
 select * FROM t1;
@@ -12,7 +13,8 @@ column1
 DROP TABLE t1;
 # DOUBLE
 CREATE TABLE t1 (
-column1 double
+column1 double,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1.1);
 select * FROM t1;
@@ -21,7 +23,8 @@ column1
 DROP TABLE t1;
 # DECIMAL
 CREATE TABLE t1 (
-column1 decimal(10,3)
+column1 decimal(10,3),
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1.1);
 select * FROM t1;
@@ -30,7 +33,8 @@ column1
 DROP TABLE t1;
 # FLOAT
 CREATE TABLE t1 (
-column1 float
+column1 float,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1.1);
 select * FROM t1;
@@ -39,7 +43,8 @@ column1
 DROP TABLE t1;
 # TINYINT
 CREATE TABLE t1 (
-column1 tinyint
+column1 tinyint,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
 select * FROM t1;
@@ -48,7 +53,8 @@ column1
 DROP TABLE t1;
 # BOOL
 CREATE TABLE t1 (
-column1 bool
+column1 bool,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
 select * FROM t1;
@@ -57,7 +63,8 @@ column1
 DROP TABLE t1;
 # SMALLINT
 CREATE TABLE t1 (
-column1 smallint
+column1 smallint,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
 select * FROM t1;
@@ -67,6 +74,7 @@ DROP TABLE t1;
 # MEDIUMINT
 CREATE TABLE t1 (
 column1 mediumint
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
 select * FROM t1;
@@ -75,7 +83,8 @@ column1
 DROP TABLE t1;
 # BIGINT
 CREATE TABLE t1 (
-column1 bigint
+column1 bigint,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
 select * FROM t1;
@@ -84,7 +93,8 @@ column1
 DROP TABLE t1;
 # YEAR
 CREATE TABLE t1 (
-column1 year
+column1 year,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (2017);
 select * FROM t1;
@@ -93,7 +103,8 @@ column1
 DROP TABLE t1;
 # BIT
 CREATE TABLE t1 (
-column1 bit
+column1 bit,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
 select column1+0 FROM t1;
@@ -102,7 +113,8 @@ column1+0
 DROP TABLE t1;
 # CHAR
 CREATE TABLE t1 (
-column1 char
+column1 char,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("t");
 select * FROM t1;
@@ -111,7 +123,8 @@ t
 DROP TABLE t1;
 # VARCHAR
 CREATE TABLE t1 (
-column1 varchar(255)
+column1 varchar(255),
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("test");
 select * FROM t1;
@@ -120,7 +133,8 @@ test
 DROP TABLE t1;
 # BINARY
 CREATE TABLE t1 (
-column1 binary
+column1 binary,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("t");
 select * FROM t1;
@@ -129,7 +143,8 @@ t
 DROP TABLE t1;
 # ENUM
 CREATE TABLE t1 (
-column1 enum('test')
+column1 enum('test'),
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("test");
 select * FROM t1;
@@ -138,7 +153,8 @@ test
 DROP TABLE t1;
 # DATETIME
 CREATE TABLE t1 (
-column1 DATETIME
+column1 DATETIME,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("2017-08-13 00:00:00");
 select * FROM t1;
@@ -147,7 +163,8 @@ column1
 DROP TABLE t1;
 # DATETIME(6)
 CREATE TABLE t1 (
-column1 DATETIME(6)
+column1 DATETIME(6),
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("2017-08-13 00:00:00.000000");
 select * FROM t1;
@@ -156,7 +173,8 @@ column1
 DROP TABLE t1;
 # TIME
 CREATE TABLE t1 (
-column1 TIME
+column1 TIME,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("00:00:00");
 select * FROM t1;
@@ -165,7 +183,8 @@ column1
 DROP TABLE t1;
 # TIME(6)
 CREATE TABLE t1 (
-column1 TIME(6)
+column1 TIME(6),
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("00:00:00.000000");
 select * FROM t1;
@@ -174,7 +193,8 @@ column1
 DROP TABLE t1;
 # TIMESTAMP
 CREATE TABLE t1 (
-column1 TIMESTAMP
+column1 TIMESTAMP,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("2017-08-13 00:00:00");
 select * FROM t1;
@@ -183,7 +203,8 @@ column1
 DROP TABLE t1;
 # TIMESTAMP(6)
 CREATE TABLE t1 (
-column1 TIMESTAMP(6)
+column1 TIMESTAMP(6),
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES ("2017-08-13 00:00:00.000000");
 select * FROM t1;
@@ -192,151 +213,96 @@ column1
 DROP TABLE t1;
 # TINYTEXT
 CREATE TABLE t1 (
-column1 TINYTEXT
+column1 int,
+column2 TINYTEXT,
+primary key(column1)
 ) ENGINE=mytile;
-INSERT INTO t1 VALUES ("test");
+INSERT INTO t1 VALUES (1, "test");
 select * FROM t1;
 column1
 test
 DROP TABLE t1;
 # TEXT
 CREATE TABLE t1 (
-column1 TEXT
+column1 int,
+column2 TEXT,
+primary key(column1)
 ) ENGINE=mytile;
-INSERT INTO t1 VALUES ("test");
+INSERT INTO t1 VALUES (1, "test");
 select * FROM t1;
 column1
 test
 DROP TABLE t1;
 # MEDIUMTEXT
 CREATE TABLE t1 (
-column1 MEDIUMTEXT
+column1 int,
+column2 MEDIUMTEXT,
+primary key(column1)
 ) ENGINE=mytile;
-INSERT INTO t1 VALUES ("test");
+INSERT INTO t1 VALUES (1, "test");
 select * FROM t1;
 column1
 test
 DROP TABLE t1;
 # LONGTEXT
 CREATE TABLE t1 (
-column1 LONGTEXT
+column1 int,
+column2 LONGTEXT,
+primary key(column1)
 ) ENGINE=mytile;
-INSERT INTO t1 VALUES ("test");
+INSERT INTO t1 VALUES (1, "test");
 select * FROM t1;
 column1
 test
 DROP TABLE t1;
 # TINYBLOB
 CREATE TABLE t1 (
-column1 TINYBLOB
+column1 int,
+column2 TINYBLOB,
+primary key(column1)
 ) ENGINE=mytile;
-INSERT INTO t1 VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
+INSERT INTO t1 VALUES (1, 'aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
 select * FROM t1;
 column1
 aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
 DROP TABLE t1;
 # BLOB
 CREATE TABLE t1 (
-column1 BLOB
+column1 int,
+column2 BLOB,
+primary key(column1)
 ) ENGINE=mytile;
-INSERT INTO t1 VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
+INSERT INTO t1 VALUES (1, 'aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
 select * FROM t1;
 column1
 aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
 DROP TABLE t1;
 # MEDIUMBLOB
 CREATE TABLE t1 (
-column1 MEDIUMBLOB
+column1 int,
+column2 MEDIUMBLOB,
+primary key(column1)
 ) ENGINE=mytile;
-INSERT INTO t1 VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
+INSERT INTO t1 VALUES (1, 'aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
 select * FROM t1;
 column1
 aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
 DROP TABLE t1;
 # LONGBLOB
 CREATE TABLE t1 (
-column1 LONGBLOB
+column1 int,
+column2 LONGBLOB,
+primary key(column1)
 ) ENGINE=mytile;
-INSERT INTO t1 VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
+INSERT INTO t1 VALUES (1, 'aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
 select * FROM t1;
 column1
 aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
 DROP TABLE t1;
-# POINT
-CREATE TABLE t1 (
-column1 POINT
-) ENGINE=mytile;
-INSERT INTO t1 VALUES (PointFromText('POINT(10 10)'));
-select ST_AsText(column1) FROM t1;
-ST_AsText(column1)
-POINT(10 10)
-DROP TABLE t1;
-# LINESTRING
-CREATE TABLE t1 (
-column1 LINESTRING
-) ENGINE=mytile;
-INSERT INTO t1 VALUES (LineFromText('LINESTRING(0 0,0 10,10 0)'));
-select ST_AsText(column1) FROM t1;
-ST_AsText(column1)
-LINESTRING(0 0,0 10,10 0)
-DROP TABLE t1;
-# POLYGON
-CREATE TABLE t1 (
-column1 POLYGON
-) ENGINE=mytile;
-INSERT INTO t1 VALUES (PolygonFromText('POLYGON((10 10,20 10,20 20,10 20,10 10))'));
-select ST_AsText(column1) FROM t1;
-ST_AsText(column1)
-POLYGON((10 10,20 10,20 20,10 20,10 10))
-DROP TABLE t1;
-# MULTIPOINT
-CREATE TABLE t1 (
-column1 MULTIPOINT
-) ENGINE=mytile;
-INSERT INTO t1 VALUES (MultiPointFromText('MULTIPOINT(0 0,10 10,10 20,20 20)'));
-select ST_AsText(column1) FROM t1;
-ST_AsText(column1)
-MULTIPOINT(0 0,10 10,10 20,20 20)
-DROP TABLE t1;
-# MULTILINESTRING
-CREATE TABLE t1 (
-column1 MULTILINESTRING
-) ENGINE=mytile;
-INSERT INTO t1 VALUES (MultiLineStringFromText('MULTILINESTRING((10 48,10 21,10 0),(16 0,16 23,16 48))'));
-select ST_AsText(column1) FROM t1;
-ST_AsText(column1)
-MULTILINESTRING((10 48,10 21,10 0),(16 0,16 23,16 48))
-DROP TABLE t1;
-# MULTIPOLYGON
-CREATE TABLE t1 (
-column1 MULTIPOLYGON
-) ENGINE=mytile;
-INSERT INTO t1 VALUES (MultiPolygonFromText('MULTIPOLYGON(((28 26,28 0,84 0,84 42,28 26),(52 18,66 23,73 9,48 6,52 18)),((59 18,67 18,67 13,59 13,59 18)))'));
-select ST_AsText(column1) FROM t1;
-ST_AsText(column1)
-MULTIPOLYGON(((28 26,28 0,84 0,84 42,28 26),(52 18,66 23,73 9,48 6,52 18)),((59 18,67 18,67 13,59 13,59 18)))
-DROP TABLE t1;
-# GEOMETRYCOLLECTION
-CREATE TABLE t1 (
-column1 GEOMETRYCOLLECTION
-) ENGINE=mytile;
-INSERT INTO t1 VALUES (GeomCollFromText('GEOMETRYCOLLECTION(POINT(0 0), LINESTRING(0 0,10 10))'));
-select ST_AsText(column1) FROM t1;
-ST_AsText(column1)
-GEOMETRYCOLLECTION(POINT(0 0),LINESTRING(0 0,10 10))
-DROP TABLE t1;
-# GEOMETRY
-CREATE TABLE t1 (
-column1 GEOMETRY
-) ENGINE=mytile;
-INSERT INTO t1 VALUES (PointFromText('POINT(10 10)'));
-select ST_AsText(column1) FROM t1;
-ST_AsText(column1)
-POINT(10 10)
-DROP TABLE t1;
 # UNSIGNED INTEGER
 CREATE TABLE t1 (
-column1 smallint unsigned
+column1 smallint unsigned,
+primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
 INSERT INTO t1 VALUES (-1);
