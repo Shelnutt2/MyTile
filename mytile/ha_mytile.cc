@@ -100,13 +100,26 @@ static int mytile_init_func(void *p) {
 struct st_mysql_storage_engine mytile_storage_engine =
     {MYSQL_HANDLERTON_INTERFACE_VERSION};
 
+/**
+ * Create a table structure and TileDB map schema
+ * @param name
+ * @param table_arg
+ * @param create_info
+ * @return
+ */
 int tile::mytile::create(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_info) {
   DBUG_ENTER("tile::mytile::create");
   DBUG_RETURN(create_map(name, table_arg, create_info));
 }
+/**
+ * Delete a table by rm'ing the tiledb directory
+ * @param name
+ * @return
+ */
 int tile::mytile::delete_table(const char *name){
   DBUG_ENTER("tile::mytile::delete_table");
-  DBUG_RETURN(0);
+  //Delete dir
+  DBUG_RETURN(my_delete(name, MYF(0)));
 }
 
 int tile::mytile::rename_table(const char *from, const char *to){
