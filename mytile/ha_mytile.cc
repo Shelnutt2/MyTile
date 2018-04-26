@@ -360,8 +360,8 @@ int tile::mytile::rnd_pos(uchar *buf, uchar *pos) {
 void tile::mytile::position(const uchar *record) {
   DBUG_ENTER("tile::mytile::position");
   /* Copy primary key as the row reference */
-  KEY*	key_info = table->key_info + this->primaryIndexID;
-  key_copy(ref, (uchar*)record, key_info, key_info->key_length);
+  KEY *key_info = table->key_info + this->primaryIndexID;
+  key_copy(ref, (uchar *) record, key_info, key_info->key_length);
   DBUG_VOID_RETURN;
 };
 
@@ -391,139 +391,144 @@ int tile::mytile::write_row(uchar *buf) {
     key_copy(to_key, buf, &table->key_info[this->primaryIndexID], table->key_info[this->primaryIndexID].key_length);
     std::vector<uchar> keyVec(to_key, to_key + table->key_info[this->primaryIndexID].key_length);
     try {
-      auto item = tiledb::Map::create_item(ctx, keyVec);
-      auto attributesMap = this->mapSchema->attributes();
-      for (Field **field = table->field; *field; field++) {
-        if (!(*field)->is_null()) {
-          auto attributePair = attributesMap.find((*field)->field_name);
-          if (attributePair == attributesMap.end()) {
-            sql_print_error("Field %s is not present in the schema map but is in field list. Table %s is broken.",
-                            (*field)->field_name, name);
-            error = -100;
-            break;
-          }
-          switch (attributePair->second.type()) {
-            /** 32-bit signed integer */
-            case TILEDB_INT32:
-              item[(*field)->field_name] = static_cast<int32_t>((*field)->val_int());
-              break;
-              /** 64-bit signed integer */
-            case TILEDB_INT64:
-              item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
-              break;
-              /** 32-bit floating point value */
-            case TILEDB_FLOAT32:
-              item[(*field)->field_name] = static_cast<float>((*field)->val_real());
-              break;
-              /** 64-bit floating point value */
-            case TILEDB_FLOAT64:
-              item[(*field)->field_name] = (*field)->val_real();
-              break;
-              /** Character */
-            case TILEDB_CHAR: {
-              char attribute_buffer[1024 * 8];
-              String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_utf8_general_ci);
-              (*field)->val_str(&attribute, &attribute);
-              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+      if (this->map->get_item(keyVec).good()) {
+        print_keydup_error(table, &table->key_info[this->primaryIndexID], MYF(0));
+        error = HA_ERR_FOUND_DUPP_KEY;
+      } else {
+        auto item = tiledb::Map::create_item(ctx, keyVec);
+        auto attributesMap = this->mapSchema->attributes();
+        for (Field **field = table->field; *field; field++) {
+          if (!(*field)->is_null()) {
+            auto attributePair = attributesMap.find((*field)->field_name);
+            if (attributePair == attributesMap.end()) {
+              sql_print_error("Field %s is not present in the schema map but is in field list. Table %s is broken.",
+                              (*field)->field_name, name);
+              error = -100;
               break;
             }
-              /** 8-bit signed integer */
-            case TILEDB_INT8:
-              item[(*field)->field_name] = static_cast<int8_t>((*field)->val_int());
-              break;
-              /** 8-bit unsigned integer */
-            case TILEDB_UINT8:
-              item[(*field)->field_name] = static_cast<uint8_t>((*field)->val_int());
-              break;
+            switch (attributePair->second.type()) {
+              /** 32-bit signed integer */
+              case TILEDB_INT32:
+                item[(*field)->field_name] = static_cast<int32_t>((*field)->val_int());
+                break;
+                /** 64-bit signed integer */
+              case TILEDB_INT64:
+                item[(*field)->field_name] = static_cast<int64_t>((*field)->val_int());
+                break;
+                /** 32-bit floating point value */
+              case TILEDB_FLOAT32:
+                item[(*field)->field_name] = static_cast<float>((*field)->val_real());
+                break;
+                /** 64-bit floating point value */
+              case TILEDB_FLOAT64:
+                item[(*field)->field_name] = (*field)->val_real();
+                break;
+                /** Character */
+              case TILEDB_CHAR: {
+                char attribute_buffer[1024 * 8];
+                String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                 &my_charset_utf8_general_ci);
+                (*field)->val_str(&attribute, &attribute);
+                item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+                break;
+              }
+                /** 8-bit signed integer */
+              case TILEDB_INT8:
+                item[(*field)->field_name] = static_cast<int8_t>((*field)->val_int());
+                break;
+                /** 8-bit unsigned integer */
+              case TILEDB_UINT8:
+                item[(*field)->field_name] = static_cast<uint8_t>((*field)->val_int());
+                break;
 
-              /** 16-bit signed integer */
-            case TILEDB_INT16:
-              item[(*field)->field_name] = static_cast<int16_t>((*field)->val_int());
-              break;
-              /** 16-bit unsigned integer */
-            case TILEDB_UINT16:
-              item[(*field)->field_name] = static_cast<uint16_t>((*field)->val_int());
-              break;
-              /** 32-bit unsigned integer */
-            case TILEDB_UINT32:
-              item[(*field)->field_name] = static_cast<uint32_t>((*field)->val_int());
-              break;
-              /** 64-bit unsigned integer */
-            case TILEDB_UINT64:
-              item[(*field)->field_name] = static_cast<uint64_t>((*field)->val_int());
-              break;
-              /** ASCII string */
-            case TILEDB_STRING_ASCII: {
-              char attribute_buffer[1024 * 8];
-              String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_utf8_general_ci);
-              (*field)->val_str(&attribute, &attribute);
-              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
-              break;
+                /** 16-bit signed integer */
+              case TILEDB_INT16:
+                item[(*field)->field_name] = static_cast<int16_t>((*field)->val_int());
+                break;
+                /** 16-bit unsigned integer */
+              case TILEDB_UINT16:
+                item[(*field)->field_name] = static_cast<uint16_t>((*field)->val_int());
+                break;
+                /** 32-bit unsigned integer */
+              case TILEDB_UINT32:
+                item[(*field)->field_name] = static_cast<uint32_t>((*field)->val_int());
+                break;
+                /** 64-bit unsigned integer */
+              case TILEDB_UINT64:
+                item[(*field)->field_name] = static_cast<uint64_t>((*field)->val_int());
+                break;
+                /** ASCII string */
+              case TILEDB_STRING_ASCII: {
+                char attribute_buffer[1024 * 8];
+                String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                 &my_charset_utf8_general_ci);
+                (*field)->val_str(&attribute, &attribute);
+                item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+                break;
+              }
+                /** UTF-8 string */
+              case TILEDB_STRING_UTF8: {
+                char attribute_buffer[1024 * 8];
+                String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                 &my_charset_utf8_general_ci);
+                (*field)->val_str(&attribute, &attribute);
+                item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+                break;
+              }
+                /** UTF-16 string */
+              case TILEDB_STRING_UTF16: {
+                char attribute_buffer[1024 * 8];
+                String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                 &my_charset_utf16_general_ci);
+                (*field)->val_str(&attribute, &attribute);
+                item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+                break;
+              }
+                /** UTF-32 string */
+              case TILEDB_STRING_UTF32: {
+                char attribute_buffer[1024 * 8];
+                String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                 &my_charset_utf32_general_ci);
+                (*field)->val_str(&attribute, &attribute);
+                item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+                break;
+              }
+                /** UCS2 string */
+              case TILEDB_STRING_UCS2: {
+                char attribute_buffer[1024 * 8];
+                String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                 &my_charset_ucs2_general_ci);
+                (*field)->val_str(&attribute, &attribute);
+                item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+                break;
+              }
+                /** UCS4 string */
+              case TILEDB_STRING_UCS4: {
+                char attribute_buffer[1024 * 8];
+                String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                 &my_charset_utf8_general_ci);
+                (*field)->val_str(&attribute, &attribute);
+                item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+                break;
+              }
+                /** This can be any datatype. Must store (type tag, value) pairs. */
+              case TILEDB_ANY: {
+                char attribute_buffer[1024 * 8];
+                String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                 &my_charset_utf8_general_ci);
+                (*field)->val_str(&attribute, &attribute);
+                item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
+                break;
+              }
             }
-              /** UTF-8 string */
-            case TILEDB_STRING_UTF8: {
-              char attribute_buffer[1024 * 8];
-              String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_utf8_general_ci);
-              (*field)->val_str(&attribute, &attribute);
-              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
-              break;
-            }
-              /** UTF-16 string */
-            case TILEDB_STRING_UTF16: {
-              char attribute_buffer[1024 * 8];
-              String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_utf16_general_ci);
-              (*field)->val_str(&attribute, &attribute);
-              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
-              break;
-            }
-              /** UTF-32 string */
-            case TILEDB_STRING_UTF32: {
-              char attribute_buffer[1024 * 8];
-              String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_utf32_general_ci);
-              (*field)->val_str(&attribute, &attribute);
-              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
-              break;
-            }
-              /** UCS2 string */
-            case TILEDB_STRING_UCS2: {
-              char attribute_buffer[1024 * 8];
-              String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_ucs2_general_ci);
-              (*field)->val_str(&attribute, &attribute);
-              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
-              break;
-            }
-              /** UCS4 string */
-            case TILEDB_STRING_UCS4: {
-              char attribute_buffer[1024 * 8];
-              String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_utf8_general_ci);
-              (*field)->val_str(&attribute, &attribute);
-              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
-              break;
-            }
-              /** This can be any datatype. Must store (type tag, value) pairs. */
-            case TILEDB_ANY: {
-              char attribute_buffer[1024 * 8];
-              String attribute(attribute_buffer, sizeof(attribute_buffer),
-                               &my_charset_utf8_general_ci);
-              (*field)->val_str(&attribute, &attribute);
-              item[(*field)->field_name] = std::string(attribute.c_ptr_safe());
-              break;
-            }
+          } else {
+            //sql_print_error("Field %s is null!!", (*field)->field_name);
           }
-        } else {
-          //sql_print_error("Field %s is null!!", (*field)->field_name);
         }
-      }
-      if (!error) {
-        map->add_item(item);
-        map->flush();
+        if (!error) {
+          map->add_item(item);
+          map->flush();
+        }
       }
     } catch (const tiledb::TileDBError &e) {
       // Log errors
