@@ -162,6 +162,7 @@ int tile::mytile::open(const char *name, int mode, uint test_if_locked) {
     DBUG_RETURN(-12);
   }
 
+  ref_length = table->s->key_info[primaryIndexID].key_length;
   DBUG_RETURN(0);
 };
 
@@ -339,9 +340,7 @@ int tile::mytile::tileToFields(tiledb::MapItem item) {
 
 int tile::mytile::rnd_pos(uchar *buf, uchar *pos) {
   DBUG_ENTER("tile::mytile::rnd_pos");
-  uint64_t len;
-  memcpy(&len, pos, sizeof(uint64_t));
-  std::vector<uchar> keyVec(pos + sizeof(uint64_t), pos + sizeof(uint64_t) + len);
+  std::vector<uchar> keyVec(pos, pos + table->s->key_info[primaryIndexID].key_length);
   auto rowItem = this->map->get_item(keyVec);
   if (!rowItem.good())
     DBUG_RETURN(-300);
@@ -349,14 +348,20 @@ int tile::mytile::rnd_pos(uchar *buf, uchar *pos) {
   DBUG_RETURN(tileToFields(rowItem));
 };
 
+/**
+ * In the case of an order by rows will need to be sorted.
+  ::position() is called after each call to ::rnd_next(),
+  the data it stores is to a byte array. You can store this
+  data via my_store_ptr(). ref_length is a variable defined to the
+  class that is the sizeof() of position being stored.
+
+ * @param record
+ */
 void tile::mytile::position(const uchar *record) {
   DBUG_ENTER("tile::mytile::position");
-  uchar *to_key = new uchar[table->key_info[this->primaryIndexID].key_length];
-  key_copy(to_key, const_cast<uchar *>(record), &table->key_info[this->primaryIndexID],
-           table->key_info[this->primaryIndexID].key_length);
-  uint64_t len = table->key_info[this->primaryIndexID].key_length;
-  memcpy(ref, &len, sizeof(uint64_t));
-  memcpy(ref + sizeof(uint64_t), to_key, len);
+  /* Copy primary key as the row reference */
+  KEY*	key_info = table->key_info + this->primaryIndexID;
+  key_copy(ref, (uchar*)record, key_info, key_info->key_length);
   DBUG_VOID_RETURN;
 };
 
