@@ -105,7 +105,13 @@ namespace tile {
         // Create TileDB map
         std::unique_ptr<tiledb::Map> map;
 
+        // Create TileDB mapSchema
+        std::unique_ptr<tiledb::MapSchema> mapSchema;
+
         // Primary Key Index ID
         uint primaryIndexID;
+
+        // Iterator for full table scans
+        std::unique_ptr<tiledb::Map::iterator> mapIterator;
     };
 }

@@ -136,7 +136,18 @@ int tile::mytile::open(const char *name, int mode, uint test_if_locked) {
   thr_lock_data_init(&share->lock, &lock, NULL);
 
   // Create TileDB map
-  map = std::make_unique<tiledb::Map>(this->ctx, name);
+  try {
+    map = std::make_unique<tiledb::Map>(this->ctx, name);
+    mapSchema = std::make_unique<tiledb::MapSchema>(ctx, name);
+  } catch (const tiledb::TileDBError &e) {
+    // Log errors
+    sql_print_error("open error for table %s : %s", this->name.c_str(), e.what());
+    DBUG_RETURN(-10);
+  } catch (const std::exception &e) {
+    // Log errors
+    sql_print_error("open error for table %s : %s", this->name.c_str(), e.what());
+    DBUG_RETURN(-11);
+  }
   this->name = name;
 
   this->primaryIndexID = 255;
@@ -148,7 +159,7 @@ int tile::mytile::open(const char *name, int mode, uint test_if_locked) {
   }
   if (this->primaryIndexID == 255) {
     sql_print_error("Could not find primary key for %s", name);
-    DBUG_RETURN(10);
+    DBUG_RETURN(-12);
   }
 
   DBUG_RETURN(0);
@@ -164,16 +175,147 @@ int tile::mytile::rnd_init(bool scan) {
   DBUG_ENTER("tile::mytile::rnd_init");
   // lock basic mutex
   //mysql_mutex_lock(&share->mutex);
+  this->mapIterator = std::make_unique<tiledb::Map::iterator>(map->begin());
   DBUG_RETURN(0);
 };
 
 int tile::mytile::rnd_next(uchar *buf) {
   DBUG_ENTER("tile::mytile::rnd_next");
+  int rc = 0;
   // We must set the bitmap for debug purpose, it is "write_set" because we use Field->store
   my_bitmap_map *orig = dbug_tmp_use_all_columns(table, table->write_set);
+  try {
+    if (*this->mapIterator == this->map->end()) {
+      rc = HA_ERR_END_OF_FILE;
+    } else {
+      auto attributesMap = this->mapSchema->attributes();
+      for (Field **field = table->field; *field; field++) {
+        auto attributePair = attributesMap.find((*field)->field_name);
+        if (attributePair == attributesMap.end()) {
+          sql_print_error("Field %s is not present in the schema map but is in field list. Table %s is broken.",
+                          (*field)->field_name, name);
+          rc = -100;
+          break;
+        }
+        switch (attributePair->second.type()) {
+          /** 32-bit signed integer */
+          case TILEDB_INT32:
+            (*field)->store((*this->mapIterator)->get<int32_t>((*field)->field_name), false);
+            break;
+            /** 64-bit signed integer */
+          case TILEDB_INT64:
+            (*field)->store((*this->mapIterator)->get<int64_t>((*field)->field_name), false);
+            break;
+            /** 32-bit floating point value */
+          case TILEDB_FLOAT32:
+            (*field)->store((*this->mapIterator)->get<float>((*field)->field_name));
+            break;
+            /** 64-bit floating point value */
+          case TILEDB_FLOAT64:
+            (*field)->store((*this->mapIterator)->get<double>((*field)->field_name));
+            break;
+            /** Character */
+          case TILEDB_CHAR: {
+            std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
+            switch((*field)->type()) {
+              case MYSQL_TYPE_GEOMETRY:
+              case MYSQL_TYPE_BLOB:
+              case MYSQL_TYPE_LONG_BLOB:
+              case MYSQL_TYPE_MEDIUM_BLOB:
+              case MYSQL_TYPE_TINY_BLOB:
+              case MYSQL_TYPE_ENUM: {
+                (*field)->store(rowString.c_str(), rowString.length(), &my_charset_bin);
+                break;
+              }
+              default:
+                (*field)->store(rowString.c_str(), rowString.length(), &my_charset_utf8_general_ci);
+                break;
+            }
+            break;
+          }
+            /** 8-bit signed integer */
+          case TILEDB_INT8:
+            (*field)->store((*this->mapIterator)->get<int8_t>((*field)->field_name), true);
+            break;
+            /** 8-bit unsigned integer */
+          case TILEDB_UINT8: {
+            (*field)->store((*this->mapIterator)->get<uint8_t>((*field)->field_name), false);
+            break;
+          }
+            /** 16-bit signed integer */
+          case TILEDB_INT16:
+            (*field)->store((*this->mapIterator)->get<int16_t>((*field)->field_name), false);
+            break;
+            /** 16-bit unsigned integer */
+          case TILEDB_UINT16:
+            (*field)->store((*this->mapIterator)->get<uint16_t>((*field)->field_name), true);
+            break;
+            /** 32-bit unsigned integer */
+          case TILEDB_UINT32:
+            (*field)->store((*this->mapIterator)->get<uint32_t>((*field)->field_name), true);
+            break;
+            /** 64-bit unsigned integer */
+          case TILEDB_UINT64:
+            (*field)->store((*this->mapIterator)->get<uint64_t>((*field)->field_name), true);
+            break;
+            /** ASCII string */
+          case TILEDB_STRING_ASCII: {
+            std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
+            (*field)->store(rowString.c_str(), rowString.length(), &my_charset_utf8_general_ci);
+            break;
+          }
+            /** UTF-8 string */
+          case TILEDB_STRING_UTF8: {
+            std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
+            (*field)->store(rowString.c_str(), rowString.length(), &my_charset_utf8_general_ci);
+            break;
+          }
+            /** UTF-16 string */
+          case TILEDB_STRING_UTF16: {
+            std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
+            (*field)->store(rowString.c_str(), rowString.length(), &my_charset_utf16_general_ci);
+            break;
+          }
+            /** UTF-32 string */
+          case TILEDB_STRING_UTF32: {
+            std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
+            (*field)->store(rowString.c_str(), rowString.length(), &my_charset_utf32_general_ci);
+            break;
+          }
+            /** UCS2 string */
+          case TILEDB_STRING_UCS2: {
+            std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
+            (*field)->store(rowString.c_str(), rowString.length(), &my_charset_ucs2_general_ci);
+            break;
+          }
+            /** UCS4 string */
+          case TILEDB_STRING_UCS4: {
+            std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
+            (*field)->store(rowString.c_str(), rowString.length(), &my_charset_utf8_general_ci);
+            break;
+          }
+            /** This can be any datatype. Must store (type tag, value) pairs. */
+          case TILEDB_ANY: {
+            std::string rowString = (*this->mapIterator)->get<std::string>((*field)->field_name);
+            (*field)->store(rowString.c_str(), rowString.length(), &my_charset_utf8_general_ci);
+            break;
+          }
+        }
+      }
+      this->mapIterator->operator++();
+    }
+  } catch (const tiledb::TileDBError &e) {
+    // Log errors
+    sql_print_error("[rnd_next] error for table %s : %s", this->name.c_str(), e.what());
+    rc = -101;
+  } catch (const std::exception &e) {
+    // Log errors
+    sql_print_error("[rnd_next] error for table %s : %s", this->name.c_str(), e.what());
+    rc = -102;
+  }
   // Reset bitmap to original
   dbug_tmp_restore_column_map(table->write_set, orig);
-  DBUG_RETURN(HA_ERR_END_OF_FILE);
+  DBUG_RETURN(rc);
 };
 
 int tile::mytile::rnd_pos(uchar *buf, uchar *pos) {
@@ -267,7 +409,7 @@ int tile::mytile::write_row(uchar *buf) {
             case MYSQL_TYPE_STRING:
             case MYSQL_TYPE_VAR_STRING:
             case MYSQL_TYPE_SET: {
-              char attribute_buffer[1024];
+              char attribute_buffer[1024 * 8];
               String attribute(attribute_buffer, sizeof(attribute_buffer),
                                &my_charset_utf8_general_ci);
               (*field)->val_str(&attribute, &attribute);
@@ -281,7 +423,7 @@ int tile::mytile::write_row(uchar *buf) {
             case MYSQL_TYPE_MEDIUM_BLOB:
             case MYSQL_TYPE_TINY_BLOB:
             case MYSQL_TYPE_ENUM: {
-              char attribute_buffer[1024];
+              char attribute_buffer[1024 * 8];
               String attribute(attribute_buffer, sizeof(attribute_buffer),
                                &my_charset_bin);
               (*field)->val_str(&attribute, &attribute);
@@ -306,6 +448,7 @@ int tile::mytile::write_row(uchar *buf) {
         }
       }
       map->add_item(item);
+      map->flush();
     } catch (const tiledb::TileDBError &e) {
       // Log errors
       sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());

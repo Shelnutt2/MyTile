@@ -73,7 +73,7 @@ column1
 DROP TABLE t1;
 # MEDIUMINT
 CREATE TABLE t1 (
-column1 mediumint
+column1 mediumint,
 primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1);
@@ -219,8 +219,8 @@ primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1, "test");
 select * FROM t1;
-column1
-test
+column1	column2
+1	test
 DROP TABLE t1;
 # TEXT
 CREATE TABLE t1 (
@@ -230,8 +230,8 @@ primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1, "test");
 select * FROM t1;
-column1
-test
+column1	column2
+1	test
 DROP TABLE t1;
 # MEDIUMTEXT
 CREATE TABLE t1 (
@@ -241,8 +241,8 @@ primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1, "test");
 select * FROM t1;
-column1
-test
+column1	column2
+1	test
 DROP TABLE t1;
 # LONGTEXT
 CREATE TABLE t1 (
@@ -252,8 +252,8 @@ primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1, "test");
 select * FROM t1;
-column1
-test
+column1	column2
+1	test
 DROP TABLE t1;
 # TINYBLOB
 CREATE TABLE t1 (
@@ -263,8 +263,8 @@ primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1, 'aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
 select * FROM t1;
-column1
-aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
+column1	column2
+1	aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
 DROP TABLE t1;
 # BLOB
 CREATE TABLE t1 (
@@ -274,8 +274,8 @@ primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1, 'aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
 select * FROM t1;
-column1
-aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
+column1	column2
+1	aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
 DROP TABLE t1;
 # MEDIUMBLOB
 CREATE TABLE t1 (
@@ -285,8 +285,8 @@ primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1, 'aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
 select * FROM t1;
-column1
-aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
+column1	column2
+1	aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
 DROP TABLE t1;
 # LONGBLOB
 CREATE TABLE t1 (
@@ -296,8 +296,8 @@ primary key(column1)
 ) ENGINE=mytile;
 INSERT INTO t1 VALUES (1, 'aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=');
 select * FROM t1;
-column1
-aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
+column1	column2
+1	aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g=
 DROP TABLE t1;
 # UNSIGNED INTEGER
 CREATE TABLE t1 (
