@@ -486,11 +486,24 @@ int tile::mytile::write_row(uchar *buf) {
               if (field->is_null())
                 item[field->field_name] = std::string("null");
               else {
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_utf8_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
+                switch (field->type()) {
+                  case MYSQL_TYPE_GEOMETRY: {
+                    char attribute_buffer[1024];
+                    String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                     &my_charset_bin);
+                    field->val_str(&attribute, &attribute);
+                    item[field->field_name] = std::string(attribute.c_ptr_safe(), attribute.length());
+                    break;
+                  }
+                  default: {
+                    char attribute_buffer[1024];
+                    String attribute(attribute_buffer, sizeof(attribute_buffer),
+                                     &my_charset_utf8_general_ci);
+                    field->val_str(&attribute, &attribute);
+                    item[field->field_name] = std::string(attribute.c_ptr_safe());
+                    break;
+                  }
+                }
               }
               break;
             }
@@ -550,7 +563,7 @@ int tile::mytile::write_row(uchar *buf) {
                 item[field->field_name] = std::string("null");
               else {
                 //Buffer used for conversion of string
-                char attribute_buffer[1024 * 8];
+                char attribute_buffer[1024];
                 String attribute(attribute_buffer, sizeof(attribute_buffer),
                                  &my_charset_utf8_general_ci);
                 field->val_str(&attribute, &attribute);
@@ -564,7 +577,7 @@ int tile::mytile::write_row(uchar *buf) {
               if (field->is_null())
                 item[field->field_name] = std::string("null");
               else {
-                char attribute_buffer[1024 * 8];
+                char attribute_buffer[1024];
                 String attribute(attribute_buffer, sizeof(attribute_buffer),
                                  &my_charset_utf8_general_ci);
                 field->val_str(&attribute, &attribute);
@@ -578,7 +591,7 @@ int tile::mytile::write_row(uchar *buf) {
               if (field->is_null())
                 item[field->field_name] = std::string("null");
               else {
-                char attribute_buffer[1024 * 8];
+                char attribute_buffer[1024];
                 String attribute(attribute_buffer, sizeof(attribute_buffer),
                                  &my_charset_utf16_general_ci);
                 field->val_str(&attribute, &attribute);
@@ -592,7 +605,7 @@ int tile::mytile::write_row(uchar *buf) {
               if (field->is_null())
                 item[field->field_name] = std::string("null");
               else {
-                char attribute_buffer[1024 * 8];
+                char attribute_buffer[1024];
                 String attribute(attribute_buffer, sizeof(attribute_buffer),
                                  &my_charset_utf32_general_ci);
                 field->val_str(&attribute, &attribute);
@@ -606,7 +619,7 @@ int tile::mytile::write_row(uchar *buf) {
               if (field->is_null())
                 item[field->field_name] = std::string("null");
               else {
-                char attribute_buffer[1024 * 8];
+                char attribute_buffer[1024];
                 String attribute(attribute_buffer, sizeof(attribute_buffer),
                                  &my_charset_ucs2_general_ci);
                 field->val_str(&attribute, &attribute);
@@ -620,7 +633,7 @@ int tile::mytile::write_row(uchar *buf) {
               if (field->is_null())
                 item[field->field_name] = std::string("null");
               else {
-                char attribute_buffer[1024 * 8];
+                char attribute_buffer[1024];
                 String attribute(attribute_buffer, sizeof(attribute_buffer),
                                  &my_charset_utf8_general_ci);
                 field->val_str(&attribute, &attribute);
@@ -634,7 +647,7 @@ int tile::mytile::write_row(uchar *buf) {
               if (field->is_null())
                 item[field->field_name] = std::string("null");
               else {
-                char attribute_buffer[1024 * 8];
+                char attribute_buffer[1024];
                 String attribute(attribute_buffer, sizeof(attribute_buffer),
                                  &my_charset_utf8_general_ci);
                 field->val_str(&attribute, &attribute);
@@ -853,7 +866,7 @@ ha_rows tile::mytile::records_in_range(uint inx, key_range *min_key, key_range *
  */
 ulonglong tile::mytile::table_flags(void) const {
   DBUG_ENTER("tile::mytile::table_flags");
-  DBUG_RETURN(HA_REC_NOT_IN_SEQ | HA_CAN_SQL_HANDLER | HA_NULL_IN_KEY | HA_REQUIRE_PRIMARY_KEY
+  DBUG_RETURN(HA_REC_NOT_IN_SEQ | HA_CAN_SQL_HANDLER | HA_NULL_IN_KEY | HA_REQUIRE_PRIMARY_KEY | HA_CAN_GEOMETRY
               | HA_CAN_BIT_FIELD | HA_FILE_BASED | HA_BINLOG_ROW_CAPABLE | HA_BINLOG_STMT_CAPABLE);
 };
 
