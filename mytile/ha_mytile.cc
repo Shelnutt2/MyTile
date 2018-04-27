@@ -41,7 +41,6 @@ tile::mytile_share::mytile_share() {
                    &mutex, MY_MUTEX_INIT_FAST);
 }
 
-
 /**
   @brief
   Example of simple lock controls. The "share" it creates is a
@@ -171,7 +170,7 @@ int tile::mytile::close(void) {
   DBUG_RETURN(0);
 };
 
-/* Table Scaning */
+/* Table Scanning */
 int tile::mytile::rnd_init(bool scan) {
   DBUG_ENTER("tile::mytile::rnd_init");
   // lock basic mutex
@@ -180,6 +179,11 @@ int tile::mytile::rnd_init(bool scan) {
   DBUG_RETURN(0);
 };
 
+/**
+ * This is the main table scan function
+ * @param buf
+ * @return
+ */
 int tile::mytile::rnd_next(uchar *buf) {
   DBUG_ENTER("tile::mytile::rnd_next");
   int rc = 0;
@@ -187,7 +191,12 @@ int tile::mytile::rnd_next(uchar *buf) {
     if (*this->mapIterator == this->map->end()) {
       rc = HA_ERR_END_OF_FILE;
     } else {
-      rc = tileToFields(*(*this->mapIterator));
+      if (!(*this->mapIterator)->get<bool>(MYTILE_DELETE_ATTRIBUTE))
+        rc = tileToFields(*(*this->mapIterator));
+      else { // If the row is marked as delete move to next one
+        this->mapIterator->operator++();
+        rc = rnd_next(buf);
+      }
     }
     if (!rc)
       this->mapIterator->operator++();
@@ -203,6 +212,11 @@ int tile::mytile::rnd_next(uchar *buf) {
   DBUG_RETURN(rc);
 }
 
+/**
+ * Converts a tiledb MapItem to mysql buffer using mysql fields
+ * @param item
+ * @return
+ */
 int tile::mytile::tileToFields(tiledb::MapItem item) {
   DBUG_ENTER("tile::mytile::tileToFields");
   int rc = 0;
@@ -338,6 +352,12 @@ int tile::mytile::tileToFields(tiledb::MapItem item) {
   DBUG_RETURN(rc);
 };
 
+/**
+ * Read position based on vector key
+ * @param buf
+ * @param pos
+ * @return
+ */
 int tile::mytile::rnd_pos(uchar *buf, uchar *pos) {
   DBUG_ENTER("tile::mytile::rnd_pos");
   std::vector<uchar> keyVec(pos, pos + table->s->key_info[primaryIndexID].key_length);
@@ -387,17 +407,24 @@ int tile::mytile::write_row(uchar *buf) {
 
   if (!error) {
 
+    // Key the key we are writting from buffer
     uchar *to_key = new uchar[table->key_info[this->primaryIndexID].key_length];
     key_copy(to_key, buf, &table->key_info[this->primaryIndexID], table->key_info[this->primaryIndexID].key_length);
     std::vector<uchar> keyVec(to_key, to_key + table->key_info[this->primaryIndexID].key_length);
     try {
-      if (this->map->get_item(keyVec).good()) {
+      tiledb::MapItem existingRow = this->map->get_item(keyVec);
+      // Check if primary key exists and the row is not deleted
+      if (existingRow.good() && !existingRow.get<bool>(MYTILE_DELETE_ATTRIBUTE)) {
         print_keydup_error(table, &table->key_info[this->primaryIndexID], MYF(0));
         error = HA_ERR_FOUND_DUPP_KEY;
       } else {
+        // Create a new item
         auto item = tiledb::Map::create_item(ctx, keyVec);
+        // Set item delete to false
+        item[MYTILE_DELETE_ATTRIBUTE] = false;
         auto attributesMap = this->mapSchema->attributes();
         for (Field **field = table->field; *field; field++) {
+          // Currently only non-null is supported
           if (!(*field)->is_null()) {
             auto attributePair = attributesMap.find((*field)->field_name);
             if (attributePair == attributesMap.end()) {
@@ -459,6 +486,7 @@ int tile::mytile::write_row(uchar *buf) {
                 break;
                 /** ASCII string */
               case TILEDB_STRING_ASCII: {
+                //Buffer used for conversion of string
                 char attribute_buffer[1024 * 8];
                 String attribute(attribute_buffer, sizeof(attribute_buffer),
                                  &my_charset_utf8_general_ci);
@@ -525,6 +553,8 @@ int tile::mytile::write_row(uchar *buf) {
             //sql_print_error("Field %s is null!!", (*field)->field_name);
           }
         }
+        // If there is no error we will add the item and flush.
+        // Flushing eventually will be done in a transaction, for now its on each write_row
         if (!error) {
           map->add_item(item);
           map->flush();
@@ -549,12 +579,60 @@ int tile::mytile::write_row(uchar *buf) {
   DBUG_RETURN(error);
 }
 
+/**
+ * Delete a row based on a primary key
+ * Since primary keys are required this uses index_read_map to find the row to delete
+ * @param buf
+ * @return
+ */
+int tile::mytile::delete_row(const uchar *buf) {
+  DBUG_ENTER("crunch::delete_row");
+  int rc = 0;
+  // Get key from buffer
+  uchar *to_key = new uchar[table->key_info[this->primaryIndexID].key_length];
+  key_copy(to_key, const_cast<uchar *>(buf), &table->key_info[this->primaryIndexID],
+           table->key_info[this->primaryIndexID].key_length);
+  std::vector<uchar> keyVec(to_key, to_key + table->key_info[this->primaryIndexID].key_length);
+  try {
+    // If the key is good, mark as deleted
+    if (this->map->get_item(keyVec).good()) {
+      (*this->map)[keyVec][MYTILE_DELETE_ATTRIBUTE] = true;
+    }
+  } catch (const tiledb::TileDBError &e) {
+    // Log errors
+    sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
+    rc = -400;
+  } catch (const std::exception &e) {
+    // Log errors
+    sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
+    rc = -401;
+  }
+  DBUG_RETURN(rc);
+}
+
+/**
+ * This calls index_read_idx_map to find a row based on a key
+ * @param buf
+ * @param key
+ * @param keypart_map
+ * @param find_flag
+ * @return
+ */
 int
 tile::mytile::index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map, enum ha_rkey_function find_flag) {
   DBUG_ENTER("tile::mytile::index_read_map");
   DBUG_RETURN(index_read_idx_map(buf, active_index, key, keypart_map, find_flag));
 }
 
+/**
+ * Find a row based on a given key, currently only primary keys are supported
+ * @param buf
+ * @param idx
+ * @param key
+ * @param keypart_map
+ * @param find_flag
+ * @return
+ */
 int tile::mytile::index_read_idx_map(uchar *buf, uint idx, const uchar *key, key_part_map keypart_map,
                                      enum ha_rkey_function find_flag) {
   DBUG_ENTER("tile::mytile::index_read_idx_map");
@@ -565,40 +643,44 @@ int tile::mytile::index_read_idx_map(uchar *buf, uint idx, const uchar *key, key
   //for (auto mapItem : this->map) {
   std::vector<uchar> prevKey;
   std::vector<uchar> itemKey;
-  while(mapItemIterator != this->map->end()) {
-    itemKey = mapItemIterator->key<std::vector<uchar>>();
-    if (!tile::cmpKeys(key, itemKey.data(), table->s->key_info + idx)) {
-      switch (find_flag) {
-        case HA_READ_AFTER_KEY:
-          mapItemIterator.operator++();
-          itemKey = mapItemIterator->key<std::vector<uchar>>();
-          break;
-        case HA_READ_BEFORE_KEY:
-          itemKey = prevKey;
-          break;
-        case HA_READ_KEY_EXACT:
-          break;
-        case HA_READ_KEY_OR_NEXT:
-        case HA_READ_KEY_OR_PREV:
-        case HA_READ_PREFIX:
-        case HA_READ_PREFIX_LAST:
-        case HA_READ_PREFIX_LAST_OR_PREV:
-        case HA_READ_MBR_CONTAIN:
-        case HA_READ_MBR_INTERSECT:
-        case HA_READ_MBR_WITHIN:
-        case HA_READ_MBR_DISJOINT:
-        case HA_READ_MBR_EQUAL:
-          /* This flag is not used by the SQL layer, so we don't support it yet. */
-          rc = HA_ERR_UNSUPPORTED;
-          break;
+  while (mapItemIterator != this->map->end()) {
+    // Only check the item if it is not deleted
+    if (!mapItemIterator->get<bool>(MYTILE_DELETE_ATTRIBUTE)) {
+      itemKey = mapItemIterator->key<std::vector<uchar>>();
+      if (!tile::cmpKeys(key, itemKey.data(), table->s->key_info + idx)) {
+        switch (find_flag) {
+          // Currently only support AFTER, BEFORE and EXACT.
+          case HA_READ_AFTER_KEY:
+            mapItemIterator.operator++();
+            itemKey = mapItemIterator->key<std::vector<uchar>>();
+            break;
+          case HA_READ_BEFORE_KEY:
+            itemKey = prevKey;
+            break;
+          case HA_READ_KEY_EXACT:
+            break;
+          case HA_READ_KEY_OR_NEXT:
+          case HA_READ_KEY_OR_PREV:
+          case HA_READ_PREFIX:
+          case HA_READ_PREFIX_LAST:
+          case HA_READ_PREFIX_LAST_OR_PREV:
+          case HA_READ_MBR_CONTAIN:
+          case HA_READ_MBR_INTERSECT:
+          case HA_READ_MBR_WITHIN:
+          case HA_READ_MBR_DISJOINT:
+          case HA_READ_MBR_EQUAL:
+            /* This flag is not used by the SQL layer, so we don't support it yet. */
+            rc = HA_ERR_UNSUPPORTED;
+            break;
+        }
+        break;
       }
-      break;
+      prevKey = itemKey;
     }
-    prevKey = itemKey;
     mapItemIterator.operator++();
   }
 
-  if(!rc) {
+  if (!rc) {
     tiledb::MapItem mapItem = this->map->get_item(itemKey);
     if (mapItem.good()) {
       rc = tileToFields(mapItem);
@@ -610,6 +692,13 @@ int tile::mytile::index_read_idx_map(uchar *buf, uint idx, const uchar *key, key
   DBUG_RETURN(rc);
 }
 
+/**
+ * Store a lock, we aren't using table or row locking at this point.
+ * @param thd
+ * @param to
+ * @param lock_type
+ * @return
+ */
 THR_LOCK_DATA **tile::mytile::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) {
   DBUG_ENTER("tile::mytile::store_lock");
   if (lock_type != TL_IGNORE && lock.type == TL_UNLOCK)
@@ -618,11 +707,22 @@ THR_LOCK_DATA **tile::mytile::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_
   DBUG_RETURN(to);
 };
 
+/**
+ * Not implemented until transaction support added
+ * @param thd
+ * @param lock_type
+ * @return
+ */
 int tile::mytile::external_lock(THD *thd, int lock_type) {
   DBUG_ENTER("tile::mytile::external_lock");
   DBUG_RETURN(0);
 }
 
+/**
+ * This should return relevant stats of the underlying tiledb map,
+ * currently just sets row count to 2, to avoid 0/1 row optimizations
+ * @return
+ */
 int tile::mytile::info(uint) {
   DBUG_ENTER("tile::mytile::info");
   //Need records to be greater than 1 to avoid 0/1 row optimizations by query optimizer
@@ -630,16 +730,34 @@ int tile::mytile::info(uint) {
   DBUG_RETURN(0);
 };
 
+/**
+ * Unimplemented
+ * @param inx
+ * @param part
+ * @param all_parts
+ * @return
+ */
 ulong tile::mytile::index_flags(uint inx, uint part, bool all_parts) const {
   DBUG_ENTER("tile::mytile::index_flags");
   DBUG_RETURN(0);
 }
 
+/**
+ * Unimplemented
+ * @param inx
+ * @param min_key
+ * @param max_key
+ * @return
+ */
 ha_rows tile::mytile::records_in_range(uint inx, key_range *min_key, key_range *max_key) {
   DBUG_ENTER("tile::mytile::records_in_range");
   DBUG_RETURN(HA_POS_ERROR);
 }
 
+/**
+ * Flags for table features supported
+ * @return
+ */
 ulonglong tile::mytile::table_flags(void) const {
   DBUG_ENTER("tile::mytile::table_flags");
   DBUG_RETURN(HA_REC_NOT_IN_SEQ | HA_CAN_SQL_HANDLER | HA_NULL_IN_KEY | HA_REQUIRE_PRIMARY_KEY

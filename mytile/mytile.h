@@ -8,6 +8,9 @@
 #include <field.h>
 #include <tiledb/tiledb>
 
+// Attribute for marking if row is deleted or not
+#define MYTILE_DELETE_ATTRIBUTE "mytile_delete_attribute"
+
 namespace tile {
     int create_map(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_info);
 

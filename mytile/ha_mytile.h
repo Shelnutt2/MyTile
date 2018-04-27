@@ -67,6 +67,8 @@ namespace tile {
 
         int write_row(uchar *buf) override;
 
+        int delete_row(const uchar *buf);
+
         int index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map, enum ha_rkey_function find_flag);
 
         int index_read_idx_map(uchar *buf, uint idx, const uchar *key, key_part_map keypart_map,

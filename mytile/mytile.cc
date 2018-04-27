@@ -14,6 +14,8 @@ int tile::create_map(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_
   // Create map schema
   tiledb::MapSchema schema(ctx);
 
+  schema.add_attribute(tiledb::Attribute::create<bool>(ctx,  MYTILE_DELETE_ATTRIBUTE, {TILEDB_BLOSC_LZ, -1}));
+
   // Create attributes
   for (Field **field = table_arg->field; *field; field++) {
     schema.add_attribute(create_field_attribute(*field, ctx));
