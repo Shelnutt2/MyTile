@@ -2,6 +2,7 @@
 ** Licensed under the GNU Lesser General Public License v3 or later
 */
 #include <log.h>
+#include <array>
 #include "mytile.h"
 
 int tile::create_map(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_info) {
@@ -14,7 +15,8 @@ int tile::create_map(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_
   // Create map schema
   tiledb::MapSchema schema(ctx);
 
-  schema.add_attribute(tiledb::Attribute::create<bool>(ctx,  MYTILE_DELETE_ATTRIBUTE, {TILEDB_BLOSC_LZ, -1}));
+  schema.add_attribute(tiledb::Attribute::create<bool>(ctx, MYTILE_DELETE_ATTRIBUTE, {TILEDB_BLOSC_LZ, -1}));
+  schema.add_attribute(tiledb::Attribute::create<std::array<bool, MAX_FIELDS>>(ctx, MYTILE_NULLS_ATTRIBUTE));
 
   // Create attributes
   for (Field **field = table_arg->field; *field; field++) {
