@@ -4,6 +4,8 @@
 #pragma once
 
 #include <handler.h>
+#include <memory>
+#include <tiledb/tiledb>
 
 #define MYSQL_SERVER 1 // required for THD class
 
@@ -61,12 +63,64 @@ namespace tile {
 
         void position(const uchar *record) override;
 
+        int tileToFields(tiledb::MapItem item);
+
+        int write_row(uchar *buf) override;
+
+        int delete_row(const uchar *buf);
+
+        int index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map, enum ha_rkey_function find_flag);
+
+        int index_read_idx_map(uchar *buf, uint idx, const uchar *key, key_part_map keypart_map,
+                               enum ha_rkey_function find_flag);
+
         THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) override;
 
+        int external_lock(THD *thd, int lock_type) override;
 
         int info(uint) override;
 
         ulong index_flags(uint inx, uint part, bool all_parts) const override;
 
+        ha_rows records_in_range(uint inx, key_range *min_key, key_range *max_key) override;
+
+        /**
+         * Max support keys
+         * @return
+         */
+        uint max_supported_keys() const override {
+          DBUG_ENTER("tile::mytile::max_supported_keys");
+
+          DBUG_RETURN(MAX_INDEXES);
+        }
+
+        /**
+         * Max support columns in a key
+         * @return
+         */
+        uint max_supported_key_parts() const override {
+          DBUG_ENTER("tile::mytile::max_supported_key_parts");
+
+          DBUG_RETURN(MAX_REF_PARTS);
+        }
+
+    private:
+        // Table name
+        std::string name;
+
+        // Create TileDB context
+        tiledb::Context ctx;
+
+        // Create TileDB map
+        std::unique_ptr<tiledb::Map> map;
+
+        // Create TileDB mapSchema
+        std::unique_ptr<tiledb::MapSchema> mapSchema;
+
+        // Primary Key Index ID
+        uint primaryIndexID;
+
+        // Iterator for full table scans
+        std::unique_ptr<tiledb::Map::iterator> mapIterator;
     };
 }
