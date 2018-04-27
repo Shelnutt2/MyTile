@@ -105,3 +105,27 @@ tiledb::Attribute tile::create_field_attribute(Field *field, tiledb::Context ctx
   sql_print_error("Unknown mysql data type in creating tiledb field attribute");
   return tiledb::Attribute::create<std::string>(ctx, field->field_name, {TILEDB_BLOSC_LZ, -1});
 }
+
+/**
+ *
+ * @param key0
+ * @param key1
+ * @param key_info
+ * @return 0 is keys are equal, -1 if key0 < key1 and 1 if key0 > key1
+ */
+int tile::cmpKeys(const uchar *key0, const uchar *key1, const KEY *key_info) {
+  int res = 0;
+  for (size_t i = 0; i < key_info->user_defined_key_parts && !res; i++) {
+    const auto &keyPart = key_info->key_part[i];
+    const int off = (keyPart.null_bit ? 1 : 0); // to step over null-byte
+
+    if (keyPart.null_bit) // does the key part have a null-byte?
+      if (*key0 != *key1) {
+        return (int) ((*key1) - (*key0));
+      }
+    res = keyPart.field->key_cmp(key0 + off, key1 + off); // compare key parts
+    key0 += keyPart.store_length; // go to next key part
+    key1 += keyPart.store_length;
+  }
+  return res;
+}

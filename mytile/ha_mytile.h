@@ -67,6 +67,11 @@ namespace tile {
 
         int write_row(uchar *buf) override;
 
+        int index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map, enum ha_rkey_function find_flag);
+
+        int index_read_idx_map(uchar *buf, uint idx, const uchar *key, key_part_map keypart_map,
+                               enum ha_rkey_function find_flag);
+
         THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) override;
 
         int external_lock(THD *thd, int lock_type) override;
@@ -82,9 +87,9 @@ namespace tile {
          * @return
          */
         uint max_supported_keys() const override {
-            DBUG_ENTER("tile::mytile::max_supported_keys");
+          DBUG_ENTER("tile::mytile::max_supported_keys");
 
-            DBUG_RETURN(MAX_INDEXES);
+          DBUG_RETURN(MAX_INDEXES);
         }
 
         /**
@@ -92,9 +97,9 @@ namespace tile {
          * @return
          */
         uint max_supported_key_parts() const override {
-            DBUG_ENTER("tile::mytile::max_supported_key_parts");
+          DBUG_ENTER("tile::mytile::max_supported_key_parts");
 
-            DBUG_RETURN(MAX_REF_PARTS);
+          DBUG_RETURN(MAX_REF_PARTS);
         }
 
     private:

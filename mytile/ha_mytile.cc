@@ -549,6 +549,67 @@ int tile::mytile::write_row(uchar *buf) {
   DBUG_RETURN(error);
 }
 
+int
+tile::mytile::index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map, enum ha_rkey_function find_flag) {
+  DBUG_ENTER("tile::mytile::index_read_map");
+  DBUG_RETURN(index_read_idx_map(buf, active_index, key, keypart_map, find_flag));
+}
+
+int tile::mytile::index_read_idx_map(uchar *buf, uint idx, const uchar *key, key_part_map keypart_map,
+                                     enum ha_rkey_function find_flag) {
+  DBUG_ENTER("tile::mytile::index_read_idx_map");
+  int rc = 0;
+
+  // We iterate over the entire map, this is the worst possible way to implement key lookup.
+  tiledb::Map::iterator mapItemIterator = this->map->begin();
+  //for (auto mapItem : this->map) {
+  std::vector<uchar> prevKey;
+  std::vector<uchar> itemKey;
+  while(mapItemIterator != this->map->end()) {
+    itemKey = mapItemIterator->key<std::vector<uchar>>();
+    if (!tile::cmpKeys(key, itemKey.data(), table->s->key_info + idx)) {
+      switch (find_flag) {
+        case HA_READ_AFTER_KEY:
+          mapItemIterator.operator++();
+          itemKey = mapItemIterator->key<std::vector<uchar>>();
+          break;
+        case HA_READ_BEFORE_KEY:
+          itemKey = prevKey;
+          break;
+        case HA_READ_KEY_EXACT:
+          break;
+        case HA_READ_KEY_OR_NEXT:
+        case HA_READ_KEY_OR_PREV:
+        case HA_READ_PREFIX:
+        case HA_READ_PREFIX_LAST:
+        case HA_READ_PREFIX_LAST_OR_PREV:
+        case HA_READ_MBR_CONTAIN:
+        case HA_READ_MBR_INTERSECT:
+        case HA_READ_MBR_WITHIN:
+        case HA_READ_MBR_DISJOINT:
+        case HA_READ_MBR_EQUAL:
+          /* This flag is not used by the SQL layer, so we don't support it yet. */
+          rc = HA_ERR_UNSUPPORTED;
+          break;
+      }
+      break;
+    }
+    prevKey = itemKey;
+    mapItemIterator.operator++();
+  }
+
+  if(!rc) {
+    tiledb::MapItem mapItem = this->map->get_item(itemKey);
+    if (mapItem.good()) {
+      rc = tileToFields(mapItem);
+    } else {
+      rc = HA_ERR_KEY_NOT_FOUND;
+    }
+  }
+
+  DBUG_RETURN(rc);
+}
+
 THR_LOCK_DATA **tile::mytile::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) {
   DBUG_ENTER("tile::mytile::store_lock");
   if (lock_type != TL_IGNORE && lock.type == TL_UNLOCK)
