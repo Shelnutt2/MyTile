@@ -26,5 +26,5 @@ add_dependencies(mytile tiledb)
 # Manually link shared library
 # Static tiledb is throwing ha_mytile.so (errno: 2, undefined symbol: blosc_compress_ctx)
 # Must use full library name else cmake things its the external target of `tiledb`
-target_link_libraries(mytile "libtiledb.so")
+target_link_libraries(mytile "libtiledb${CMAKE_SHARED_LIBRARY_SUFFIX}")
 target_include_directories(mytile PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/external/TileDB/tiledb/examples" "mytile")
