@@ -67,12 +67,13 @@ namespace tile {
 
         int write_row(uchar *buf) override;
 
-        int delete_row(const uchar *buf);
+        int delete_row(const uchar *buf) override;
 
-        int index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map, enum ha_rkey_function find_flag);
+        int index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map,
+                           enum ha_rkey_function find_flag) override;
 
         int index_read_idx_map(uchar *buf, uint idx, const uchar *key, key_part_map keypart_map,
-                               enum ha_rkey_function find_flag);
+                               enum ha_rkey_function find_flag) override;
 
         THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) override;
 

@@ -10,6 +10,7 @@
 
 // Attribute for marking if row is deleted or not
 #define MYTILE_DELETE_ATTRIBUTE "mytile_delete_attribute"
+#define MYTILE_NULLS_ATTRIBUTE "mytile_nulls_attribute"
 
 namespace tile {
     int create_map(const char *name, TABLE *table_arg, HA_CREATE_INFO *create_info);
