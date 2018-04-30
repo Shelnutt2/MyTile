@@ -8,7 +8,6 @@
 #include <array>
 #include "ha_mytile.h"
 #include "mytile.h"
-#include "utils.h"
 
 // Handler for mytile engine
 handlerton *mytile_hton;
@@ -121,7 +120,21 @@ int tile::mytile::create(const char *name, TABLE *table_arg, HA_CREATE_INFO *cre
 int tile::mytile::delete_table(const char *name) {
   DBUG_ENTER("tile::mytile::delete_table");
   //Delete dir
-  DBUG_RETURN(tile::removeDirectory(name));
+  //DBUG_RETURN(tile::removeDirectory(name));
+  try {
+    tiledb::VFS vfs(ctx);
+    vfs.remove_dir(name);
+  } catch (const tiledb::TileDBError &e) {
+    // Log errors
+    sql_print_error("delete_table error for table %s : %s", this->name.c_str(), e.what());
+    DBUG_RETURN(-20);
+  } catch (const std::exception &e) {
+    // Log errors
+    sql_print_error("delete_table error for table %s : %s", this->name.c_str(), e.what());
+    DBUG_RETURN(-21);
+  }
+  DBUG_RETURN(0);
+
 }
 
 int tile::mytile::rename_table(const char *from, const char *to) {
