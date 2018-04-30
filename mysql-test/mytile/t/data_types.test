@@ -300,3 +300,83 @@ CREATE TABLE t1 (
 INSERT INTO t1 VALUES ("test", 1);
 select * FROM t1;
 DROP TABLE t1;
+
+--echo # POINT
+CREATE TABLE t1 (
+  column1 int,
+  column2 POINT,
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1, PointFromText('POINT(10 10)'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # LINESTRING
+CREATE TABLE t1 (
+  column1 int,
+  column2 LINESTRING,
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1, LineFromText('LINESTRING(0 0,0 10,10 0)'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # POLYGON
+CREATE TABLE t1 (
+  column1 int,
+  column2 POLYGON,
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1, PolygonFromText('POLYGON((10 10,20 10,20 20,10 20,10 10))'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # MULTIPOINT
+CREATE TABLE t1 (
+  column1 int,
+  column2 MULTIPOINT,
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1, MultiPointFromText('MULTIPOINT(0 0,10 10,10 20,20 20)'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # MULTILINESTRING
+CREATE TABLE t1 (
+  column1 int,
+  column2 MULTILINESTRING,
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1, MultiLineStringFromText('MULTILINESTRING((10 48,10 21,10 0),(16 0,16 23,16 48))'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # MULTIPOLYGON
+CREATE TABLE t1 (
+  column1 int,
+  column2 MULTIPOLYGON,
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1, MultiPolygonFromText('MULTIPOLYGON(((28 26,28 0,84 0,84 42,28 26),(52 18,66 23,73 9,48 6,52 18)),((59 18,67 18,67 13,59 13,59 18)))'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # GEOMETRYCOLLECTION
+CREATE TABLE t1 (
+  column1 int,
+  column2 GEOMETRYCOLLECTION,
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1, GeomCollFromText('GEOMETRYCOLLECTION(POINT(0 0), LINESTRING(0 0,10 10))'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
+
+--echo # GEOMETRY
+CREATE TABLE t1 (
+  column1 int,
+  column2 GEOMETRY,
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1 VALUES (1, PointFromText('POINT(10 10)'));
+select ST_AsText(column1) FROM t1;
+DROP TABLE t1;
