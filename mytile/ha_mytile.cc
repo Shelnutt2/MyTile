@@ -749,42 +749,61 @@ int tile::mytile::index_read_idx_map(uchar *buf, uint idx, const uchar *key, key
   //for (auto mapItem : this->map) {
   std::vector<uchar> prevKey;
   std::vector<uchar> itemKey;
-  while (mapItemIterator != this->map->end()) {
-    // Only check the item if it is not deleted
-    if (!mapItemIterator->get<bool>(MYTILE_DELETE_ATTRIBUTE)) {
-      itemKey = mapItemIterator->key<std::vector<uchar>>();
-      if (!tile::cmpKeys(key, itemKey.data(), table->s->key_info + idx)) {
-        switch (find_flag) {
-          // Currently only support AFTER, BEFORE and EXACT.
-          case HA_READ_AFTER_KEY:
-            mapItemIterator.operator++();
-            itemKey = mapItemIterator->key<std::vector<uchar>>();
-            break;
-          case HA_READ_BEFORE_KEY:
-            itemKey = prevKey;
-            break;
-          case HA_READ_KEY_EXACT:
-            break;
-          case HA_READ_KEY_OR_NEXT:
-          case HA_READ_KEY_OR_PREV:
-          case HA_READ_PREFIX:
-          case HA_READ_PREFIX_LAST:
-          case HA_READ_PREFIX_LAST_OR_PREV:
-          case HA_READ_MBR_CONTAIN:
-          case HA_READ_MBR_INTERSECT:
-          case HA_READ_MBR_WITHIN:
-          case HA_READ_MBR_DISJOINT:
-          case HA_READ_MBR_EQUAL:
-            /* This flag is not used by the SQL layer, so we don't support it yet. */
-            rc = HA_ERR_UNSUPPORTED;
-            break;
-        }
-        break;
+
+  // TODO: The keys are ordered, but for auto increment this happens to work by the nature of auto increment
+  if(key == NULL) {
+    sql_print_information("find_flag = %d", find_flag);
+    if(find_flag == HA_READ_PREFIX_LAST) {
+      while (mapItemIterator != this->map->end()) {
+        itemKey = mapItemIterator->key<std::vector<uchar>>();
+        sql_print_information("key found: %s", itemKey.data());
+        prevKey = itemKey;
+        mapItemIterator.operator++();
       }
-      prevKey = itemKey;
+      itemKey = prevKey;
+      sql_print_information("key found final size of: %s", itemKey.size());
     }
-    mapItemIterator.operator++();
+  } else { //Key is not null
+    while (mapItemIterator != this->map->end()) {
+      // Only check the item if it is not deleted
+      if (!mapItemIterator->get<bool>(MYTILE_DELETE_ATTRIBUTE)) {
+        itemKey = mapItemIterator->key<std::vector<uchar>>();
+        if (!tile::cmpKeys(key, itemKey.data(), table->s->key_info + idx)) {
+          switch (find_flag) {
+            // Currently only support AFTER, BEFORE and EXACT.
+            case HA_READ_AFTER_KEY:
+              mapItemIterator.operator++();
+              itemKey = mapItemIterator->key<std::vector<uchar>>();
+              break;
+            case HA_READ_BEFORE_KEY:
+              itemKey = prevKey;
+              break;
+            case HA_READ_KEY_EXACT:
+              break;
+            case HA_READ_KEY_OR_NEXT:
+            case HA_READ_KEY_OR_PREV:
+            case HA_READ_PREFIX:
+            case HA_READ_PREFIX_LAST:
+            case HA_READ_PREFIX_LAST_OR_PREV:
+            case HA_READ_MBR_CONTAIN:
+            case HA_READ_MBR_INTERSECT:
+            case HA_READ_MBR_WITHIN:
+            case HA_READ_MBR_DISJOINT:
+            case HA_READ_MBR_EQUAL:
+              /* This flag is not used by the SQL layer, so we don't support it yet. */
+              rc = HA_ERR_UNSUPPORTED;
+              break;
+          }
+          break;
+        }
+        prevKey = itemKey;
+      }
+      mapItemIterator.operator++();
+    }
   }
+
+  if(itemKey.size() == 0)
+    rc = HA_ERR_KEY_NOT_FOUND;
 
   if (!rc) {
     tiledb::MapItem mapItem = this->map->get_item(itemKey);
@@ -798,6 +817,18 @@ int tile::mytile::index_read_idx_map(uchar *buf, uint idx, const uchar *key, key
   DBUG_RETURN(rc);
 }
 
+int tile::mytile::index_last(uchar *buf) {
+  DBUG_ENTER("tile::mytile::index_last");
+
+  int error = index_read_map(buf, NULL, 0, HA_READ_BEFORE_KEY);
+
+  /* MySQL does not seem to allow this to return HA_ERR_KEY_NOT_FOUND */
+
+  if (error == HA_ERR_KEY_NOT_FOUND) {
+    error = HA_ERR_END_OF_FILE;
+  }
+  DBUG_RETURN(error);
+}
 /**
  * Store a lock, we aren't using table or row locking at this point.
  * @param thd
@@ -867,6 +898,7 @@ ha_rows tile::mytile::records_in_range(uint inx, key_range *min_key, key_range *
 ulonglong tile::mytile::table_flags(void) const {
   DBUG_ENTER("tile::mytile::table_flags");
   DBUG_RETURN(HA_REC_NOT_IN_SEQ | HA_CAN_SQL_HANDLER | HA_NULL_IN_KEY | HA_REQUIRE_PRIMARY_KEY
+              | HA_AUTO_PART_KEY | HA_NO_TRANSACTIONS
               | HA_CAN_BIT_FIELD | HA_FILE_BASED | HA_BINLOG_ROW_CAPABLE | HA_BINLOG_STMT_CAPABLE);
 };
 

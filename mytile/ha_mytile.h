@@ -75,6 +75,8 @@ namespace tile {
         int index_read_idx_map(uchar *buf, uint idx, const uchar *key, key_part_map keypart_map,
                                enum ha_rkey_function find_flag) override;
 
+        int index_last(uchar *buf);
+
         THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) override;
 
         int external_lock(THD *thd, int lock_type) override;

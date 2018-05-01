@@ -1,0 +1,11 @@
+--echo #Primary Key Auto Increment Support Test
+CREATE TABLE t1 (
+  column1 integer auto_increment,
+  column2 varchar(255),
+  primary key(column1)
+) ENGINE=mytile;
+INSERT INTO t1(column2) VALUES ('aHR0cHM6Ly9naXRodWIuY29tL1NoZWxudXR0Mi9jcnVuY2g='), ('dmFsdWUy'), ('dmFsdWU');
+select column1, column2 from t1 ORDER BY column1;
+INSERT INTO t1(column2) VALUES ('row4');
+select column1, column2 from t1 ORDER BY column1;
+DROP TABLE t1;
