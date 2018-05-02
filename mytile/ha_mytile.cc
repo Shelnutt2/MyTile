@@ -418,8 +418,6 @@ int tile::mytile::rnd_end() {
 int tile::mytile::write_row(uchar *buf) {
   DBUG_ENTER("tile::mytile::write_row");
   int error = 0;
-  // We must set the bitmap for debug purpose, it is "write_set" because we use Field->store
-  my_bitmap_map *old_map = dbug_tmp_use_all_columns(table, table->read_set);
 
   /*
    If we have an auto_increment column and we are writing a changed row
@@ -429,258 +427,285 @@ int tile::mytile::write_row(uchar *buf) {
     error = update_auto_increment();
 
   if (!error) {
-
-    // Key the key we are writting from buffer
-    uchar *to_key = new uchar[table->key_info[this->primaryIndexID].key_length];
-    key_copy(to_key, buf, &table->key_info[this->primaryIndexID], table->key_info[this->primaryIndexID].key_length);
-    std::vector<uchar> keyVec(to_key, to_key + table->key_info[this->primaryIndexID].key_length);
-    try {
-      tiledb::MapItem existingRow = this->map->get_item(keyVec);
-      // Check if primary key exists and the row is not deleted
-      if (existingRow.good() && !existingRow.get<bool>(MYTILE_DELETE_ATTRIBUTE)) {
-        print_keydup_error(table, &table->key_info[this->primaryIndexID], MYF(0));
-        error = HA_ERR_FOUND_DUPP_KEY;
-      } else {
-        // Create a new item
-        auto item = tiledb::Map::create_item(ctx, keyVec);
-        // Set item delete to false
-        item[MYTILE_DELETE_ATTRIBUTE] = false;
-        auto attributesMap = this->mapSchema->attributes();
-        std::array<bool, MAX_FIELDS> nulls;
-        //for (Field **field = table->field; *field; field++) {
-        for (uint i = 0; i < table->s->fields; i++) {
-          Field *field = table->field[i];
-          // Set null
-          nulls[i] = field->is_null();
-
-          auto attributePair = attributesMap.find(field->field_name);
-          if (attributePair == attributesMap.end()) {
-            sql_print_error("Field %s is not present in the schema map but is in field list. Table %s is broken.",
-                            field->field_name, name.c_str());
-            error = -100;
-            break;
-          }
-          switch (attributePair->second.type()) {
-            /** 32-bit signed integer */
-            case TILEDB_INT32:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<int32_t>(0);
-              else
-                item[field->field_name] = static_cast<int32_t>(field->val_int());
-              break;
-              /** 64-bit signed integer */
-            case TILEDB_INT64:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<int64_t>(0);
-              else
-                item[field->field_name] = static_cast<int64_t>(field->val_int());
-              break;
-              /** 32-bit floating point value */
-            case TILEDB_FLOAT32:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<float>(0);
-              else
-                item[field->field_name] = static_cast<float>(field->val_real());
-              break;
-              /** 64-bit floating point value */
-            case TILEDB_FLOAT64:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<double>(0);
-              else
-                item[field->field_name] = field->val_real();
-              break;
-              /** Character */
-            case TILEDB_CHAR: {
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = std::string("null");
-              else {
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_utf8_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
-              }
-              break;
-            }
-              /** 8-bit signed integer */
-            case TILEDB_INT8:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<int8_t>(0);
-              else
-                item[field->field_name] = static_cast<int8_t>(field->val_int());
-              break;
-              /** 8-bit unsigned integer */
-            case TILEDB_UINT8:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<uint8_t>(0);
-              else
-                item[field->field_name] = static_cast<uint8_t>(field->val_int());
-              break;
-
-              /** 16-bit signed integer */
-            case TILEDB_INT16:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<int16_t>(0);
-              else
-                item[field->field_name] = static_cast<int16_t>(field->val_int());
-              break;
-              /** 16-bit unsigned integer */
-            case TILEDB_UINT16:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<uint16_t>(0);
-              else
-                item[field->field_name] = static_cast<uint16_t>(field->val_int());
-              break;
-              /** 32-bit unsigned integer */
-            case TILEDB_UINT32:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<uint32_t>(0);
-              else
-                item[field->field_name] = static_cast<uint32_t>(field->val_int());
-              break;
-              /** 64-bit unsigned integer */
-            case TILEDB_UINT64:
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = static_cast<uint64_t>(0);
-              else
-                item[field->field_name] = static_cast<uint64_t>(field->val_int());
-              break;
-              /** ASCII string */
-            case TILEDB_STRING_ASCII: {
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = std::string("null");
-              else {
-                //Buffer used for conversion of string
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_utf8_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
-              }
-              break;
-            }
-              /** UTF-8 string */
-            case TILEDB_STRING_UTF8: {
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = std::string("null");
-              else {
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_utf8_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
-              }
-              break;
-            }
-              /** UTF-16 string */
-            case TILEDB_STRING_UTF16: {
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = std::string("null");
-              else {
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_utf16_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
-              }
-              break;
-            }
-              /** UTF-32 string */
-            case TILEDB_STRING_UTF32: {
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = std::string("null");
-              else {
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_utf32_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
-              }
-              break;
-            }
-              /** UCS2 string */
-            case TILEDB_STRING_UCS2: {
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = std::string("null");
-              else {
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_ucs2_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
-              }
-              break;
-            }
-              /** UCS4 string */
-            case TILEDB_STRING_UCS4: {
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = std::string("null");
-              else {
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_utf8_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
-              }
-              break;
-            }
-              /** This can be any datatype. Must store (type tag, value) pairs. */
-            case TILEDB_ANY: {
-              // If the column is null, forced to set default non-empty value for tiledb
-              if (field->is_null())
-                item[field->field_name] = std::string("null");
-              else {
-                char attribute_buffer[1024 * 8];
-                String attribute(attribute_buffer, sizeof(attribute_buffer),
-                                 &my_charset_utf8_general_ci);
-                field->val_str(&attribute, &attribute);
-                item[field->field_name] = std::string(attribute.c_ptr_safe());
-              }
-              break;
-            }
-          }
-        }
-
-        item[MYTILE_NULLS_ATTRIBUTE] = nulls;
-        // If there is no error we will add the item and flush.
-        // Flushing eventually will be done in a transaction, for now its on each write_row
-        if (!error) {
-          map->add_item(item);
-          map->flush();
-        }
-      }
-    } catch (const tiledb::TileDBError &e) {
-      // Log errors
-      sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
-      error = -101;
-    } catch (const std::exception &e) {
-      // Log errors
-      sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
-      error = -102;
+    //Check if primary_key exists
+    if (check_primary_key_exists(buf)) {
+      print_keydup_error(table, &table->key_info[this->primaryIndexID], MYF(0));
+      error = HA_ERR_FOUND_DUPP_KEY;
+    } else {
+      error = tile_write_row(buf);
     }
   } else {
     sql_print_error("update auto increment failed (error code %d) for write_row on table %s", error,
                     this->name.c_str());
   }
+  DBUG_RETURN(error);
+}
+
+/**
+ * Checks if a primary key from a row exists
+ * @param buf
+ * @return
+ */
+bool tile::mytile::check_primary_key_exists(uchar *buf) {
+  DBUG_ENTER("tile::mytile::check_primary_key");
+  uchar *to_key = new uchar[table->key_info[this->primaryIndexID].key_length];
+  key_copy(to_key, buf, &table->key_info[this->primaryIndexID], table->key_info[this->primaryIndexID].key_length);
+  std::vector<uchar> keyVec(to_key, to_key + table->key_info[this->primaryIndexID].key_length);
+  tiledb::MapItem existingRow = this->map->get_item(keyVec);
+  // Check if primary key exists and the row is not deleted
+  if (existingRow.good() && !existingRow.get<bool>(MYTILE_DELETE_ATTRIBUTE))
+    DBUG_RETURN(true);
+  DBUG_RETURN(false);
+}
+
+int tile::mytile::tile_write_row(uchar *buf) {
+  DBUG_ENTER("tile::mytile::tile_write_row");
+  int error = 0;
+
+  // We must set the bitmap for debug purpose, it is "write_set" because we use Field->store
+  my_bitmap_map *old_map = dbug_tmp_use_all_columns(table, table->read_set);
+
+  // Key the key we are writting from buffer
+  uchar *to_key = new uchar[table->key_info[this->primaryIndexID].key_length];
+  key_copy(to_key, buf, &table->key_info[this->primaryIndexID], table->key_info[this->primaryIndexID].key_length);
+  std::vector<uchar> keyVec(to_key, to_key + table->key_info[this->primaryIndexID].key_length);
+  try {
+    // Create a new item
+    auto item = tiledb::Map::create_item(ctx, keyVec);
+    // Set item delete to false
+    item[MYTILE_DELETE_ATTRIBUTE] = false;
+    auto attributesMap = this->mapSchema->attributes();
+    std::array<bool, MAX_FIELDS> nulls;
+    //for (Field **field = table->field; *field; field++) {
+    for (uint i = 0; i < table->s->fields; i++) {
+      Field *field = table->field[i];
+      // Set null
+      nulls[i] = field->is_null();
+
+      auto attributePair = attributesMap.find(field->field_name);
+      if (attributePair == attributesMap.end()) {
+        sql_print_error("Field %s is not present in the schema map but is in field list. Table %s is broken.",
+                        field->field_name, name.c_str());
+        error = -100;
+        break;
+      }
+      switch (attributePair->second.type()) {
+        /** 32-bit signed integer */
+        case TILEDB_INT32:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<int32_t>(0);
+          else
+            item[field->field_name] = static_cast<int32_t>(field->val_int());
+          break;
+          /** 64-bit signed integer */
+        case TILEDB_INT64:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<int64_t>(0);
+          else
+            item[field->field_name] = static_cast<int64_t>(field->val_int());
+          break;
+          /** 32-bit floating point value */
+        case TILEDB_FLOAT32:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<float>(0);
+          else
+            item[field->field_name] = static_cast<float>(field->val_real());
+          break;
+          /** 64-bit floating point value */
+        case TILEDB_FLOAT64:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<double>(0);
+          else
+            item[field->field_name] = field->val_real();
+          break;
+          /** Character */
+        case TILEDB_CHAR: {
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = std::string("null");
+          else {
+            char attribute_buffer[1024 * 8];
+            String attribute(attribute_buffer, sizeof(attribute_buffer),
+                             &my_charset_utf8_general_ci);
+            field->val_str(&attribute, &attribute);
+            item[field->field_name] = std::string(attribute.c_ptr_safe());
+          }
+          break;
+        }
+          /** 8-bit signed integer */
+        case TILEDB_INT8:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<int8_t>(0);
+          else
+            item[field->field_name] = static_cast<int8_t>(field->val_int());
+          break;
+          /** 8-bit unsigned integer */
+        case TILEDB_UINT8:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<uint8_t>(0);
+          else
+            item[field->field_name] = static_cast<uint8_t>(field->val_int());
+          break;
+
+          /** 16-bit signed integer */
+        case TILEDB_INT16:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<int16_t>(0);
+          else
+            item[field->field_name] = static_cast<int16_t>(field->val_int());
+          break;
+          /** 16-bit unsigned integer */
+        case TILEDB_UINT16:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<uint16_t>(0);
+          else
+            item[field->field_name] = static_cast<uint16_t>(field->val_int());
+          break;
+          /** 32-bit unsigned integer */
+        case TILEDB_UINT32:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<uint32_t>(0);
+          else
+            item[field->field_name] = static_cast<uint32_t>(field->val_int());
+          break;
+          /** 64-bit unsigned integer */
+        case TILEDB_UINT64:
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = static_cast<uint64_t>(0);
+          else
+            item[field->field_name] = static_cast<uint64_t>(field->val_int());
+          break;
+          /** ASCII string */
+        case TILEDB_STRING_ASCII: {
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = std::string("null");
+          else {
+            //Buffer used for conversion of string
+            char attribute_buffer[1024 * 8];
+            String attribute(attribute_buffer, sizeof(attribute_buffer),
+                             &my_charset_utf8_general_ci);
+            field->val_str(&attribute, &attribute);
+            item[field->field_name] = std::string(attribute.c_ptr_safe());
+          }
+          break;
+        }
+          /** UTF-8 string */
+        case TILEDB_STRING_UTF8: {
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = std::string("null");
+          else {
+            char attribute_buffer[1024 * 8];
+            String attribute(attribute_buffer, sizeof(attribute_buffer),
+                             &my_charset_utf8_general_ci);
+            field->val_str(&attribute, &attribute);
+            item[field->field_name] = std::string(attribute.c_ptr_safe());
+          }
+          break;
+        }
+          /** UTF-16 string */
+        case TILEDB_STRING_UTF16: {
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = std::string("null");
+          else {
+            char attribute_buffer[1024 * 8];
+            String attribute(attribute_buffer, sizeof(attribute_buffer),
+                             &my_charset_utf16_general_ci);
+            field->val_str(&attribute, &attribute);
+            item[field->field_name] = std::string(attribute.c_ptr_safe());
+          }
+          break;
+        }
+          /** UTF-32 string */
+        case TILEDB_STRING_UTF32: {
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = std::string("null");
+          else {
+            char attribute_buffer[1024 * 8];
+            String attribute(attribute_buffer, sizeof(attribute_buffer),
+                             &my_charset_utf32_general_ci);
+            field->val_str(&attribute, &attribute);
+            item[field->field_name] = std::string(attribute.c_ptr_safe());
+          }
+          break;
+        }
+          /** UCS2 string */
+        case TILEDB_STRING_UCS2: {
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = std::string("null");
+          else {
+            char attribute_buffer[1024 * 8];
+            String attribute(attribute_buffer, sizeof(attribute_buffer),
+                             &my_charset_ucs2_general_ci);
+            field->val_str(&attribute, &attribute);
+            item[field->field_name] = std::string(attribute.c_ptr_safe());
+          }
+          break;
+        }
+          /** UCS4 string */
+        case TILEDB_STRING_UCS4: {
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = std::string("null");
+          else {
+            char attribute_buffer[1024 * 8];
+            String attribute(attribute_buffer, sizeof(attribute_buffer),
+                             &my_charset_utf8_general_ci);
+            field->val_str(&attribute, &attribute);
+            item[field->field_name] = std::string(attribute.c_ptr_safe());
+          }
+          break;
+        }
+          /** This can be any datatype. Must store (type tag, value) pairs. */
+        case TILEDB_ANY: {
+          // If the column is null, forced to set default non-empty value for tiledb
+          if (field->is_null())
+            item[field->field_name] = std::string("null");
+          else {
+            char attribute_buffer[1024 * 8];
+            String attribute(attribute_buffer, sizeof(attribute_buffer),
+                             &my_charset_utf8_general_ci);
+            field->val_str(&attribute, &attribute);
+            item[field->field_name] = std::string(attribute.c_ptr_safe());
+          }
+          break;
+        }
+      }
+    }
+
+    item[MYTILE_NULLS_ATTRIBUTE] = nulls;
+    // If there is no error we will add the item and flush.
+    // Flushing eventually will be done in a transaction, for now its on each write_row
+    if (!error) {
+      map->add_item(item);
+      map->flush();
+    }
+  } catch (const tiledb::TileDBError &e) {
+    // Log errors
+    sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
+    error = -101;
+  } catch (const std::exception &e) {
+    // Log errors
+    sql_print_error("write error for table %s : %s", this->name.c_str(), e.what());
+    error = -102;
+  }
 
   // Reset bitmap to original
+
   dbug_tmp_restore_column_map(table->read_set, old_map);
   DBUG_RETURN(error);
 }
@@ -714,6 +739,18 @@ int tile::mytile::delete_row(const uchar *buf) {
     rc = -401;
   }
   DBUG_RETURN(rc);
+}
+
+/**
+ * Update a row with new values. In tiledb the latest fragment is always the one that is a read.
+ * Each write produces a new fragment, so to update we should just call write_row.
+ * @param old_data
+ * @param new_data
+ * @return
+ */
+int tile::mytile::update_row(const uchar *old_data, uchar *new_data) {
+  DBUG_ENTER("tile::mytile::update_row");
+  DBUG_RETURN(tile_write_row(new_data));
 }
 
 /**
