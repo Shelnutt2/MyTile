@@ -184,6 +184,23 @@ int tile::mytile::close(void) {
   DBUG_RETURN(0);
 };
 
+int tile::mytile::optimize(THD *thd, HA_CHECK_OPT *check_opt) {
+  DBUG_ENTER("tile::mytile::optimize");
+  int rc = 0;
+  try {
+    tiledb::Map::consolidate(ctx, name);
+  } catch (const tiledb::TileDBError &e) {
+    // Log errors
+    sql_print_error("[optimize] error for table %s : %s", this->name.c_str(), e.what());
+    rc = -30;
+  } catch (const std::exception &e) {
+    // Log errors
+    sql_print_error("[optimize] error for table %s : %s", this->name.c_str(), e.what());
+    rc = -31;
+  }
+  DBUG_RETURN(rc);
+}
+
 /* Table Scanning */
 int tile::mytile::rnd_init(bool scan) {
   DBUG_ENTER("tile::mytile::rnd_init");
