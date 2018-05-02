@@ -67,6 +67,10 @@ namespace tile {
 
         int write_row(uchar *buf) override;
 
+        bool check_primary_key_exists(uchar *buf);
+
+        int tile_write_row(uchar *buf);
+
         int delete_row(const uchar *buf) override;
 
         int index_read_map(uchar *buf, const uchar *key, key_part_map keypart_map,
