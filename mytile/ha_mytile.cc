@@ -742,6 +742,18 @@ int tile::mytile::delete_row(const uchar *buf) {
 }
 
 /**
+ * Update a row with new values. In tiledb the latest fragment is always the one that is a read.
+ * Each write produces a new fragment, so to update we should just call write_row.
+ * @param old_data
+ * @param new_data
+ * @return
+ */
+int tile::mytile::update_row(const uchar *old_data, uchar *new_data) {
+  DBUG_ENTER("tile::mytile::update_row");
+  DBUG_RETURN(tile_write_row(new_data));
+}
+
+/**
  * This calls index_read_idx_map to find a row based on a key
  * @param buf
  * @param key
