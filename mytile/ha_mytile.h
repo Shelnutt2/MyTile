@@ -52,6 +52,8 @@ namespace tile {
 
         int close(void) override;
 
+        int optimize(THD* thd, HA_CHECK_OPT* check_opt) override;
+
         /* Table Scaning */
         int rnd_init(bool scan) override;
 
