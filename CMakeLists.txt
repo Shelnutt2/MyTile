@@ -34,6 +34,9 @@ if(NOT TileDB_FOUND)
     INSTALL_COMMAND $(MAKE) -C tiledb install
   #  UPDATE_COMMAND ""
     CMAKE_ARGS
+      -DTILEDB_VERBOSE=ON
+      -DTILEDB_S3=ON
+      -DTILEDB_FORCE_ALL_DEPS=ON
       -DCMAKE_INSTALL_PREFIX=${TILEDB_INSTALL_PREFIX}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     LOG_DOWNLOAD TRUE
@@ -53,6 +56,6 @@ if(NOT TileDB_FOUND)
   target_link_libraries(mytile "${TILEDB_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libtbb${CMAKE_SHARED_LIBRARY_SUFFIX}")
 else()
   #set(TBB_DIR "${CMAKE_CURRENT_SOURCE_DIR}external/TileDB/build/externals/src/ep_tbb/cmake/TileDB/build/externals/src/ep_tbb/cmake")
-  find_package(TBB CONFIG REQUIRED)
-  target_link_libraries(mytile TileDB::tiledb_static)
+  #find_package(TBB CONFIG REQUIRED)
+  target_link_libraries(mytile TileDB::tiledb_shared)
 endif()

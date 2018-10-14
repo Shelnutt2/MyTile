@@ -13,12 +13,12 @@ db
 event
 func
 general_log
+global_priv
 gtid_slave_pos
 help_category
 help_keyword
 help_relation
 help_topic
-host
 index_stats
 innodb_index_stats
 innodb_table_stats
@@ -36,4 +36,5 @@ time_zone_leap_second
 time_zone_name
 time_zone_transition
 time_zone_transition_type
+transaction_registry
 user
